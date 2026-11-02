@@ -324,6 +324,19 @@ th {
   <div class="wrap">
    <header class="app-header">
     <h1>Vokabeltrainer</h1>
+     <button id="installAppBtn" style="
+        display: none;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 10px;
+        background: #2563eb;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        ">
+        📲 App installieren
+    </button>
     <div class="collection-switcher" id="collectionSwitcher">
      <div class="collection-control-row">
       <button type="button" id="collectionToggle" class="collection-toggle" aria-haspopup="true" aria-expanded="false" title="Liste wählen">Deutsch ▾</button>
@@ -384,19 +397,6 @@ th {
       Excel importieren
       <input accept=".xlsx,.xls,.csv" hidden="" id="importFile" type="file"/>
      </label>
-     <button id="installAppBtn" style="
-        display: none;
-        padding: 12px 20px;
-        border: none;
-        border-radius: 10px;
-        background: #2563eb;
-        color: white;
-        font-size: 16px;
-        font-weight: bold;
-        cursor: pointer;
-        ">
-        📲 App installieren
-    </button>
     </div>
     <p class="status" id="entryStatus">
     </p>
