@@ -315,7 +315,10 @@ th {
   @media(max-width:480px){.app-header{align-items:flex-start}.collection-toggle{max-width:58vw;}}
 
  </style>
- 
+
+<meta name="theme-color" content="#315b9a">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png" type="image/png">
 </head>
  <body>
   <div class="wrap">
@@ -1361,6 +1364,17 @@ th {
 )();
 
 </script>
- 
+  
+<script>
+if ('serviceWorker' in navigator &&
+    (location.protocol === 'https:' ||
+     location.hostname === 'localhost' ||
+     location.hostname === '127.0.0.1')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .catch(err => console.warn(err));
+  });
+}
+</script>
 </body>
 </html>
