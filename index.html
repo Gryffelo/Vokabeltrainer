@@ -384,6 +384,19 @@ th {
       Excel importieren
       <input accept=".xlsx,.xls,.csv" hidden="" id="importFile" type="file"/>
      </label>
+     <button id="installAppBtn" style="
+        display: none;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 10px;
+        background: #2563eb;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        ">
+        📲 App installieren
+    </button>
     </div>
     <p class="status" id="entryStatus">
     </p>
@@ -1366,15 +1379,60 @@ th {
 </script>
   
 <script>
-if ('serviceWorker' in navigator &&
+  if ('serviceWorker' in navigator &&
     (location.protocol === 'https:' ||
      location.hostname === 'localhost' ||
      location.hostname === '127.0.0.1')) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .catch(err => console.warn(err));
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .catch(err => console.warn(err));
   });
 }
 </script>
+
+<script>
+  let deferredInstallPrompt = null;
+
+  const installButton = document.getElementById("installAppBtn");
+
+  // Installationsmöglichkeit erkennen
+  window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+
+      deferredInstallPrompt = event;
+
+      // Button anzeigen
+      installButton.style.display = "block";
+  });
+
+  // Button anklicken
+  installButton.addEventListener("click", async () => {
+      if (!deferredInstallPrompt) {
+          alert(
+              "Bitte öffne den Vokabeltrainer in Chrome und " +
+              "wähle im Menü 'App installieren' oder " +
+              "'Zum Startbildschirm hinzufügen'."
+          );
+          return;
+      }
+
+      deferredInstallPrompt.prompt();
+
+      const result = await deferredInstallPrompt.userChoice;
+
+      if (result.outcome === "accepted") {
+          installButton.style.display = "none";
+      }
+
+      deferredInstallPrompt = null;
+  });
+
+  // Bereits installierte App erkennen
+  window.addEventListener("appinstalled", () => {
+      installButton.style.display = "none";
+      deferredInstallPrompt = null;
+  });
+</script>
+
 </body>
 </html>
