@@ -298,17 +298,37 @@ th {
   #list thead th[data-sort]:focus-visible { outline:2px solid #64748b; outline-offset:-2px; }
   #sortHelp { font-size:.9rem; opacity:.78; margin:.25rem 0 .7rem; }\n  .list-toolbar{align-items:flex-start;justify-content:space-between;gap:12px;}\n  .list-toolbar #sortHelp{margin:.25rem 0 .7rem;}\n  .list-toolbar #deleteDuplicates{margin-top:0;align-self:flex-start;}
 
+  .app-header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 10px;}
+  .app-header h1{margin:0;font-size:1.6rem;}
+  .collection-switcher{position:relative;z-index:20;}
+  .collection-control-row{display:flex;align-items:center;gap:6px;}
+  .collection-toggle{min-width:145px;max-width:min(55vw,320px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#fff;border:1px solid #b8c2d0;font-weight:650;text-align:left;}
+  .collection-icon,.collection-action{min-width:38px;min-height:38px;padding:6px 9px;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;}
+  .collection-menu{position:absolute;left:0;top:calc(100% + 6px);min-width:255px;max-width:min(88vw,360px);max-height:55vh;overflow:auto;padding:7px;background:#fff;border:1px solid #d2d9e3;border-radius:12px;box-shadow:0 8px 28px #15253b2b;}
+  .collection-item{display:flex;align-items:center;gap:5px;padding:3px;border-radius:8px;}
+  .collection-item.current{background:#eef3fb;}
+  .collection-name{flex:1;min-width:0;text-align:left;overflow-wrap:anywhere;background:transparent;padding:8px 9px;}
+  .collection-item.current .collection-name{font-weight:700;color:#173f7c;}
+  .collection-action{min-width:34px;min-height:34px;padding:5px;background:#edf1f6;}
+  .collection-action.delete{background:#fee2e2;color:#991b1b;}
+  .collection-add{width:100%;margin-top:6px;text-align:left;background:#e8f0fe;color:#174ea6;font-weight:650;}
+  @media(max-width:480px){.app-header{align-items:flex-start}.collection-toggle{max-width:58vw;}}
+
  </style>
  
-<meta name="theme-color" content="#315b9a">
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./icons/icon-192.png" type="image/png">
 </head>
  <body>
   <div class="wrap">
-   <h1>
-    Vokabeltrainer
-   </h1>
+   <header class="app-header">
+    <h1>Vokabeltrainer</h1>
+    <div class="collection-switcher" id="collectionSwitcher">
+     <div class="collection-control-row">
+      <button type="button" id="collectionToggle" class="collection-toggle" aria-haspopup="true" aria-expanded="false" title="Liste wählen">Deutsch ▾</button>
+      <button type="button" id="editCurrentCollection" class="collection-icon" title="Liste umbenennen" aria-label="Liste umbenennen">✎</button>
+     </div>
+     <div id="collectionMenu" class="collection-menu" hidden></div>
+    </div>
+   </header>
    <nav id="tabs">
     <button class="active" data-tab="entry">
      Eintragen
@@ -539,12 +559,17 @@ th {
 
 (()=>{
   'use strict';
-  const DATA_KEY='vokabeltrainer_data_v3',SET_KEY='vokabeltrainer_settings_v3',MINUTE=60000,BASE=10*MINUTE;
-  let words=load(),settings=loadSettings(),practiceWord=null,practiceOrder=[],practicePos=0,testWord=null,testStage=0,testOrder=[],testPos=0;
+  const DATA_KEY='vokabeltrainer_data_v3',SET_KEY='vokabeltrainer_settings_v3',COLLECTION_KEY='vokabeltrainer_collections_v1',MINUTE=60000,BASE=10*MINUTE;
+  let settings=loadSettings();
+  let collectionStore=loadCollections();
+  let activeCollection=collectionStore.lists.find(x=>x.id===collectionStore.selectedId)||collectionStore.lists[0];
+  let activeCollectionId=activeCollection.id;
+  let words=activeCollection.words;
+  let practiceWord=null,practiceOrder=[],practicePos=0,testWord=null,testStage=0,testOrder=[],testPos=0;
   if(!['word','answer','hint','index','timestamp'].includes(settings.sort)){settings.sort='timestamp';settings.sortDesc=true;}
   function loadSettings(){
     const defaults={
-      sort:'timestamp',sortDesc:true,randomTest:false,randomPractice:false,mirrorDirection:false,uiLanguage:'de',foreignLanguage:'ja',nativeLanguage:'de'
+      sort:'timestamp',sortDesc:true,randomTest:false,randomPractice:false,mirrorDirection:false,uiLanguage:'de',foreignLanguage:'de',nativeLanguage:'de'
     }
     ;
     try{
@@ -565,6 +590,27 @@ th {
       return[]
     }
   }
+  function loadCollections(){
+    try{
+      const raw=JSON.parse(localStorage.getItem(COLLECTION_KEY)||'null');
+      if(raw&&Array.isArray(raw.lists)&&raw.lists.length){
+        const lists=raw.lists.filter(x=>x&&typeof x.name==='string'&&x.name.trim()).map((x,i)=>({id:String(x.id||('list-'+i+'-'+Date.now())),name:x.name.trim(),words:Array.isArray(x.words)?x.words.map(normalize):[]}));
+        if(lists.length)return {lists,selectedId:lists.some(x=>x.id===raw.selectedId)?raw.selectedId:lists[0].id};
+      }
+    }catch(e){}
+    // One-time migration: all existing vocabulary becomes the initial "Deutsch" list.
+    const legacy=load();
+    const initial={id:'collection-deutsch',name:'Deutsch',words:legacy};
+    const migrated={lists:[initial],selectedId:initial.id};
+    try{localStorage.setItem(COLLECTION_KEY,JSON.stringify(migrated));}catch(e){}
+    return migrated;
+  }
+  function persistActiveCollection(){
+    activeCollection.words=words;
+    collectionStore.selectedId=activeCollectionId;
+    try{localStorage.setItem(COLLECTION_KEY,JSON.stringify(collectionStore));localStorage.setItem(DATA_KEY,JSON.stringify(words));}catch(e){console.warn('Speichern fehlgeschlagen',e);}
+  }
+  function newCollectionId(){return (window.crypto&&typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():'list-'+Date.now()+'-'+Math.random().toString(36).slice(2);}
   function normalize(w){
     return {
       word:String(w.word??w[0]??''),translation:String(w.translation??w[1]??''),hint:String(w.hint??w[2]??''),index:Math.max(0,Number(w.index??w[3]??0)||0),timestamp:Number(w.timestamp??w[4]??Date.now()),index2:Math.max(0,Number(w.index2??w[8]??0)||0),timestamp2:Number(w.timestamp2??w[9]??Date.now()),extra:Array.isArray(w.extra)?w.extra:[],created:Number(w.created)||Date.now(),tested:!!w.tested
@@ -594,9 +640,10 @@ th {
   }
   function saveSettings(){localStorage.setItem(SET_KEY,JSON.stringify(settings));}
   function save(){
-    localStorage.setItem(DATA_KEY,JSON.stringify(words));
+    persistActiveCollection();
     localStorage.setItem(SET_KEY,JSON.stringify(settings));
-    refresh()
+    refresh();
+    renderCollectionPicker();
   }
   const $=id=>document.getElementById(id);
   const localePhrases={"Eintragen":["Add","Añadir","Добавить","添加","登録","Ajouter","Inserisci","Додати","إضافة"],"Üben":["Practice","Practicar","Практика","练习","練習","Pratiquer","Esercizio","Вправи","تدرّب"],"Testen":["Test","Evaluar","Тест","测试","テスト","Tester","Test","Тест","اختبار"],"Liste":["List","Lista","Список","列表","リスト","Liste","Elenco","Список","القائمة"],"Einstellungen":["Settings","Configuración","Настройки","设置","設定","Paramètres","Impostazioni","Налаштування","الإعدادات"],"Vokabel eintragen":["Add vocabulary","Añadir vocabulario","Добавить слово","添加词汇","単語を登録","Ajouter du vocabulaire","Inserisci vocabolo","Додати слово","أضف مفردة"],"Spalte 1 – Fremdsprache":["Column 1 – Foreign language","Columna 1 – Idioma extranjero","Столбец 1 — Иностранный язык","第1列—外语","列1・外国語","Colonne 1 – Langue étrangère","Colonna 1 – Lingua straniera","Стовпець 1 — Іноземна мова","العمود 1 – اللغة الأجنبية"],"Spalte 2 – Muttersprache":["Column 2 – Native language","Columna 2 – Lengua materna","Столбец 2 — Родной язык","第2列—母语","列2・母語","Colonne 2 – Langue maternelle","Colonna 2 – Lingua madre","Стовпець 2 — Рідна мова","العمود 2 – اللغة الأم"],"Spalte 3 – Hinweis (optional)":["Column 3 – Pronunciation hint (optional)","Columna 3 – Pronunciación (opcional)","Столбец 3 — Подсказка произношения (необязательно)","第3列—发音提示（可选）","列3・発音ヒント（任意）","Colonne 3 – Aide à la prononciation (facultatif)","Colonna 3 – Suggerimento pronuncia (facoltativo)","Стовпець 3 — Підказка вимови (необов’язково)","العمود 3 – تلميح النطق (اختياري)"],"Excel exportieren":["Export Excel","Exportar Excel","Экспорт Excel","导出 Excel","Excelを書き出す","Exporter Excel","Esporta Excel","Експорт Excel","تصدير Excel"],"Excel importieren":["Import Excel","Importar Excel","Импорт Excel","导入 Excel","Excelを読み込む","Importer Excel","Importa Excel","Імпорт Excel","استيراد Excel"],"Zufällige Reihenfolge aller fälligen Vokabeln":["Random order for all due words","Orden aleatorio de palabras pendientes","Случайный порядок всех слов к повторению","所有到期词随机排序","期限の単語をランダムに出題","Ordre aléatoire des mots à réviser","Ordine casuale delle parole da ripassare","Випадковий порядок усіх слів до повторення","ترتيب عشوائي لكل المفردات المستحقة"],"Hinweis anzeigen":["Show hint","Mostrar pista","Показать подсказку","显示提示","ヒントを表示","Afficher l’indice","Mostra suggerimento","Показати підказку","إظهار التلميح"],"Lösung anzeigen":["Show answer","Mostrar solución","Показать ответ","显示答案","答えを表示","Afficher la réponse","Mostra risposta","Показати відповідь","إظهار الإجابة"],"Gewusst":["Known","La sabía","Знаю","认识","わかった","Su","Conosciuta","Знаю","أعرفها"],"Nicht gewusst":["Not known","No la sabía","Не знаю","不认识","わからない","Non su","Non conosciuta","Не знаю","لا أعرفها"],"Test neu starten":["Restart test","Reiniciar prueba","Перезапустить тест","重新开始测试","テストを再開","Recommencer le test","Ricomincia test","Перезапустити тест","إعادة الاختبار"],"Zufällige Reihenfolge":["Random order","Orden aleatorio","Случайный порядок","随机顺序","ランダム順","Ordre aléatoire","Ordine casuale","Випадковий порядок","ترتيب عشوائي"],"Vokabelliste":["Vocabulary list","Lista de vocabulario","Список слов","词汇表","単語リスト","Liste de vocabulaire","Elenco vocaboli","Список слів","قائمة المفردات"],"Chronologisch":["Chronological","Cronológico","По времени","按时间","時系列","Chronologique","Cronologico","Хронологічно","زمني"],"Alphabetisch":["Alphabetical","Alfabético","По алфавиту","按字母","アルファベット順","Alphabétique","Alfabetico","За абеткою","أبجدي"],"Fremdsprache":["Foreign language","Idioma extranjero","Иностранный язык","外语","外国語","Langue étrangère","Lingua straniera","Іноземна мова","اللغة الأجنبية","Yabancı dil","Język obcy"],"Muttersprache":["Native language","Lengua materna","Родной язык","母语","母語","Langue maternelle","Lingua madre","Рідна мова","اللغة الأم","Ana dili","Język ojczysty"],"Hinweis":["Hint","Pista","Подсказка","提示","ヒント","Indice","Suggerimento","Підказка","تلميح","İpucu","Podpowiedź"],"Gewusst":["Known","Conocido","Знаю","已知","わかった","Connu","Conosciuto","Відомо","معروف","Bilindi","Znane"],"Zeitstempel":["Timestamp","Marca de tiempo","Временная метка","时间戳","タイムスタンプ","Horodatage","Timestamp","Часова позначка","الطابع الزمني"],"Der Lernfortschritt wird lokal in diesem Browser gespeichert.":["Learning progress is stored locally in this browser.","El progreso se guarda localmente en este navegador.","Прогресс обучения хранится локально в этом браузере.","学习进度保存在此浏览器本地。","学習の進捗はこのブラウザーに保存されます。","La progression est enregistrée localement dans ce navigateur.","I progressi sono salvati localmente in questo browser.","Прогрес навчання зберігається локально в цьому браузері.","يتم حفظ التقدم محليًا في هذا المتصفح."],"Lernrichtung spiegeln (Muttersprache → Fremdsprache)":["Reverse learning direction (native → foreign)","Invertir dirección (materna → extranjera)","Обратное направление (родной → иностранный)","反转学习方向（母语→外语）","学習方向を反転（母語→外国語）","Inverser le sens (maternelle → étrangère)","Inverti direzione (madrelingua → straniera)","Змінити напрямок (рідна → іноземна)","عكس الاتجاه (الأم → الأجنبية)"],"Gesamten Lernfortschritt zurücksetzen":["Reset all learning progress","Restablecer todo el progreso","Сбросить весь прогресс","重置全部学习进度","学習進捗をすべてリセット","Réinitialiser toute la progression","Azzera tutti i progressi","Скинути весь прогрес","إعادة ضبط التقدم كله"],"Alle Vokabeln löschen":["Delete all vocabulary","Eliminar todo el vocabulario","Удалить все слова","删除所有词汇","すべての単語を削除","Supprimer tout le vocabulaire","Elimina tutti i vocaboli","Видалити всі слова","حذف جميع المفردات"],"Oberflächensprache":["Interface language","Idioma de la interfaz","Язык интерфейса","界面语言","インターフェース言語","Langue de l’interface","Lingua dell’interfaccia","Мова інтерфейсу","لغة الواجهة"],"Vokabeltrainer":["Vocabulary Trainer","Entrenador de vocabulario","Тренажёр слов","词汇训练器","単語トレーナー","Entraîneur de vocabulaire","Allenatore di vocaboli","Тренажер слів","مدرّب المفردات"],"Vokabel eingetragen.":["Vocabulary added.","Vocabulario añadido.","Слово добавлено.","词汇已添加。","単語を登録しました。","Vocabulaire ajouté.","Vocabolo inserito.","Слово додано.","تمت إضافة المفردة."],"Bitte Vokabel und Übersetzung ausfüllen.":["Please enter the word and translation.","Introduce la palabra y la traducción.","Введите слово и перевод.","请填写词汇和翻译。","単語と訳を入力してください。","Veuillez saisir le mot et sa traduction.","Inserisci il vocabolo e la traduzione.","Введіть слово та переклад.","يرجى إدخال المفردة والترجمة."],"Keine fälligen Vokabeln übrig.":["No due vocabulary left.","No quedan palabras pendientes.","Нет слов для повторения.","没有待复习词汇。","復習する単語はありません。","Aucun mot à réviser.","Nessun vocabolo da ripassare.","Немає слів для повторення.","لا توجد مفردات مستحقة."],"Noch keine fälligen Vokabeln":["No vocabulary due yet","Aún no hay palabras pendientes","Пока нет слов к повторению","暂无到期词汇","まだ復習する単語はありません","Aucun mot à réviser pour le moment","Nessun vocabolo da ripassare","Поки немає слів до повторення","لا توجد مفردات مستحقة بعد"],"Keine Vokabeln zum Testen.":["No vocabulary to test.","No hay vocabulario para evaluar.","Нет слов для тестирования.","没有可测试的词汇。","テストする単語がありません。","Aucun vocabulaire à tester.","Nessun vocabolo da testare.","Немає слів для тестування.","لا توجد مفردات للاختبار."],"Keine Vokabeln zum Testen übrig.":["No vocabulary left to test.","No queda vocabulario para evaluar.","Слова для тестирования закончились.","没有剩余可测试词汇。","テストする単語は残っていません。","Il ne reste aucun mot à tester.","Non restano vocaboli da testare.","Слів для тестування більше немає.","لم تعد هناك مفردات للاختبار."],"Richtig – nächste Wiederholung in ":["Correct – next review in ","Correcto: próxima revisión en ","Верно — следующее повторение через ","正确 — 下次复习时间：","正解 — 次の復習まで ","Correct — prochaine révision dans ","Corretto — prossimo ripasso tra ","Правильно — наступне повторення через ","صحيح — المراجعة التالية خلال "],"Als gewusst markiert; Lernstand unverändert.":["Marked as known; progress unchanged.","Marcada como conocida; progreso sin cambios.","Отмечено как известное; прогресс не изменён.","已标记为认识；学习进度不变。","既知としてマークしました。進捗は変更されません。","Marqué comme connu ; progression inchangée.","Segnato come conosciuto; progressi invariati.","Позначено як відоме; прогрес без змін.","تم وضع علامة «معروفة»؛ التقدم لم يتغير."],"Nicht gewusst: Index zurückgesetzt, jetzt wieder fällig.":["Not known: index reset; due again now.","No conocida: índice reiniciado; vuelve a tocar ahora.","Неизвестно: индекс сброшен, повторить сейчас.","不认识：索引已重置，现在需要复习。","不明：インデックスをリセットし、今すぐ復習対象にしました。","Non connu : indice réinitialisé, à revoir maintenant.","Non conosciuto: indice azzerato, da ripassare ora.","Не відомо: індекс скинуто, повторити зараз.","غير معروفة: تمت إعادة ضبط المؤشر وهي مستحقة الآن."],"Test neu gestartet.":["Test restarted.","Prueba reiniciada.","Тест перезапущен.","测试已重新开始。","テストを再開しました。","Test redémarré.","Test riavviato.","Тест перезапущено.","تمت إعادة الاختبار."],"Lernfortschritt zurückgesetzt.":["Learning progress reset.","Progreso restablecido.","Прогресс обучения сброшен.","学习进度已重置。","学習進捗をリセットしました。","Progression réinitialisée.","Progressi azzerati.","Прогрес навчання скинуто.","تمت إعادة ضبط التقدم."],"Alle Vokabeln gelöscht.":["All vocabulary deleted.","Todo el vocabulario eliminado.","Все слова удалены.","所有词汇已删除。","すべての単語を削除しました。","Tout le vocabulaire a été supprimé.","Tutti i vocaboli eliminati.","Усі слова видалено.","تم حذف جميع المفردات."]};
@@ -604,7 +651,91 @@ th {
   Object.entries(greekPhrases).forEach(([k,v])=>{localePhrases[k]=localePhrases[k]||[];while(localePhrases[k].length<11)localePhrases[k].push('');localePhrases[k][11]=v;});
   const greekMore={"Minuten": "λεπτά", "Minute": "λεπτό", "Stunden": "ώρες", "Stunde": "ώρα", "Tage": "ημέρες", "Tag": "ημέρα", "Index": "Γνωστό", "Vokabelliste": "Λίστα λεξιλογίου", "Duplikate löschen": "Διαγραφή διπλοτύπων", "Keine fälligen Vokabeln übrig.": "Δεν απομένουν λέξεις για επανάληψη.", "Keine Vokabeln zum Testen.": "Δεν υπάρχουν λέξεις για δοκιμή.", "Richtig – nächste Wiederholung in ": "Σωστά — επόμενη επανάληψη σε ", "Wird erneut geübt.": "Θα επαναληφθεί.", "Duplikate gefunden. Wirklich löschen?": "Βρέθηκαν διπλότυπα. Θέλετε πράγματι να διαγραφούν?", "Zum Sortieren auf eine Spaltenüberschrift klicken.": "Κάντε κλικ σε μια επικεφαλίδα για ταξινόμηση.", "Vokabel löschen": "Διαγραφή λέξης"};
   Object.entries(greekMore).forEach(([k,v])=>{localePhrases[k]=localePhrases[k]||[];while(localePhrases[k].length<12)localePhrases[k].push('');localePhrases[k][11]=v;});
+
+  Object.assign(localePhrases,{
+    "Liste wählen":["Choose list","Elegir lista","Выбрать список","选择列表","リストを選択","Choisir une liste","Scegli elenco","Вибрати список","اختر قائمة","Liste seç","Wybierz listę","Επιλογή λίστας"],
+    "Liste umbenennen":["Rename list","Renombrar lista","Переименовать список","重命名列表","リスト名を変更","Renommer la liste","Rinomina elenco","Перейменувати список","إعادة تسمية القائمة","Listeyi yeniden adlandır","Zmień nazwę listy","Μετονομασία λίστας"],
+    "Liste löschen":["Delete list","Eliminar lista","Удалить список","删除列表","リストを削除","Supprimer la liste","Elimina elenco","Видалити список","حذف القائمة","Listeyi sil","Usuń listę","Διαγραφή λίστας"],
+    "Neue Liste hinzufügen":["Add new list","Añadir nueva lista","Добавить список","添加新列表","新しいリストを追加","Ajouter une liste","Aggiungi elenco","Додати список","إضافة قائمة جديدة","Yeni liste ekle","Dodaj nową listę","Προσθήκη νέας λίστας"],
+    "Name der neuen Liste eingeben:":["Enter the new list name:","Introduce el nombre de la nueva lista:","Введите название нового списка:","输入新列表名称：","新しいリスト名を入力してください：","Saisissez le nom de la nouvelle liste :","Inserisci il nome del nuovo elenco:","Введіть назву нового списку:","أدخل اسم القائمة الجديدة:","Yeni liste adını girin:","Wpisz nazwę nowej listy:","Εισαγάγετε το όνομα της νέας λίστας:"],
+    "Neuen Namen für die Liste eingeben:":["Enter a new name for the list:","Introduce un nuevo nombre para la lista:","Введите новое название списка:","输入列表的新名称：","リストの新しい名前を入力してください：","Saisissez un nouveau nom pour la liste :","Inserisci un nuovo nome per l'elenco:","Введіть нову назву списку:","أدخل اسمًا جديدًا للقائمة:","Liste için yeni bir ad girin:","Wpisz nową nazwę listy:","Εισαγάγετε νέο όνομα για τη λίστα:"],
+    "Der Listenname darf nicht leer sein.":["The list name cannot be empty.","El nombre de la lista no puede estar vacío.","Название списка не может быть пустым.","列表名称不能为空。","リスト名を空にすることはできません。","Le nom de la liste ne peut pas être vide.","Il nome dell'elenco non può essere vuoto.","Назва списку не може бути порожньою.","لا يمكن أن يكون اسم القائمة فارغًا.","Liste adı boş olamaz.","Nazwa listy nie może być pusta.","Το όνομα της λίστας δεν μπορεί να είναι κενό."],
+    "Eine Liste mit diesem Namen existiert bereits.":["A list with this name already exists.","Ya existe una lista con este nombre.","Список с таким названием уже существует.","已存在同名列表。","同じ名前のリストが既にあります。","Une liste portant ce nom existe déjà.","Esiste già un elenco con questo nome.","Список із такою назвою вже існує.","توجد قائمة بهذا الاسم بالفعل.","Bu ada sahip bir liste zaten var.","Lista o tej nazwie już istnieje.","Υπάρχει ήδη λίστα με αυτό το όνομα."],
+    "Diese Liste und alle darin gespeicherten Vokabeln und Lernstände endgültig löschen?":["Permanently delete this list and all vocabulary and learning progress stored in it?","¿Eliminar definitivamente esta lista y todo el vocabulario y progreso guardados en ella?","Безвозвратно удалить этот список, все слова и прогресс обучения в нём?","永久删除此列表及其中保存的所有词汇和学习进度？","このリストと、保存されているすべての単語および学習状況を完全に削除しますか？","Supprimer définitivement cette liste ainsi que tout le vocabulaire et la progression qu'elle contient ?","Eliminare definitivamente questo elenco e tutti i vocaboli e i progressi in esso contenuti?","Остаточно видалити цей список, усі слова та прогрес навчання в ньому?","هل تريد حذف هذه القائمة نهائيًا مع جميع المفردات والتقدم المحفوظ فيها؟","Bu listeyi ve içinde kayıtlı tüm kelimeleri ve öğrenme ilerlemesini kalıcı olarak silmek istiyor musunuz?","Czy trwale usunąć tę listę oraz wszystkie zapisane w niej słówka i postępy?","Να διαγραφεί οριστικά αυτή η λίστα και όλο το λεξιλόγιο και η πρόοδος που είναι αποθηκευμένα σε αυτή;"],
+    "Liste gelöscht.":["List deleted.","Lista eliminada.","Список удалён.","列表已删除。","リストを削除しました。","Liste supprimée.","Elenco eliminato.","Список видалено.","تم حذف القائمة.","Liste silindi.","Lista została usunięta.","Η λίστα διαγράφηκε."],
+    "Liste erstellt.":["List created.","Lista creada.","Список создан.","列表已创建。","リストを作成しました。","Liste créée.","Elenco creato.","Список створено.","تم إنشاء القائمة.","Liste oluşturuldu.","Lista została utworzona.","Η λίστα δημιουργήθηκε."],
+    "Listenname geändert.":["List renamed.","Nombre de la lista cambiado.","Название списка изменено.","列表名称已更改。","リスト名を変更しました。","Liste renommée.","Nome dell'elenco modificato.","Назву списку змінено.","تم تغيير اسم القائمة.","Liste adı değiştirildi.","Zmieniono nazwę listy.","Το όνομα της λίστας άλλαξε."],
+    "Mindestens eine Liste muss erhalten bleiben.":["At least one list must remain.","Debe quedar al menos una lista.","Должен остаться хотя бы один список.","必须至少保留一个列表。","少なくとも1つのリストを残す必要があります。","Au moins une liste doit être conservée.","Deve rimanere almeno un elenco.","Має залишитися принаймні один список.","يجب الاحتفاظ بقائمة واحدة على الأقل.","En az bir liste kalmalıdır.","Musi pozostać co najmniej jedna lista.","Πρέπει να παραμείνει τουλάχιστον μία λίστα."]
+  });
+
   function localizedText(key){const lang=settings.uiLanguage||'de';const ix={de:-1,en:0,es:1,ru:2,zh:3,ja:4,fr:5,it:6,uk:7,ar:8,tr:9,pl:10,el:11}[lang]??-1;const row=localePhrases[key];return ix<0?key:(row&&row[ix]||key);}
+  function renderCollectionPicker(){
+    const toggle=$('collectionToggle'),menu=$('collectionMenu');
+    if(!toggle||!menu||!activeCollection)return;
+    toggle.textContent=activeCollection.name+' ▾';
+    toggle.dataset.noTranslate='true';
+    toggle.title=localizedText('Liste wählen');
+    const edit=$('editCurrentCollection');
+    edit.title=localizedText('Liste umbenennen');edit.setAttribute('aria-label',localizedText('Liste umbenennen'));
+    menu.innerHTML='';
+    collectionStore.lists.forEach(item=>{
+      const row=document.createElement('div');row.className='collection-item'+(item.id===activeCollectionId?' current':'');
+      const choose=document.createElement('button');choose.type='button';choose.className='collection-name';choose.dataset.noTranslate='true';choose.textContent=item.name;choose.title=localizedText('Liste wählen');
+      choose.setAttribute('aria-current',item.id===activeCollectionId?'true':'false');
+      choose.addEventListener('click',()=>{selectCollection(item.id);menu.hidden=true;toggle.setAttribute('aria-expanded','false');});
+      row.appendChild(choose);
+      if(item.id!==activeCollectionId){
+        const editButton=document.createElement('button');editButton.type='button';editButton.className='collection-action';editButton.textContent='✎';editButton.title=localizedText('Liste umbenennen');editButton.setAttribute('aria-label',localizedText('Liste umbenennen')+': '+item.name);
+        editButton.addEventListener('click',()=>renameCollection(item.id));row.appendChild(editButton);
+        const deleteButton=document.createElement('button');deleteButton.type='button';deleteButton.className='collection-action delete';deleteButton.textContent='🗑';deleteButton.title=localizedText('Liste löschen');deleteButton.setAttribute('aria-label',localizedText('Liste löschen')+': '+item.name);
+        deleteButton.addEventListener('click',()=>deleteCollection(item.id));row.appendChild(deleteButton);
+      }
+      menu.appendChild(row);
+    });
+    const addButton=document.createElement('button');addButton.type='button';addButton.className='collection-add';addButton.textContent='＋ '+localizedText('Neue Liste hinzufügen');addButton.addEventListener('click',()=>createCollection());menu.appendChild(addButton);
+  }
+  function closeCollectionMenu(){const menu=$('collectionMenu'),toggle=$('collectionToggle');if(menu)menu.hidden=true;if(toggle)toggle.setAttribute('aria-expanded','false');}
+  function selectCollection(id){
+    const next=collectionStore.lists.find(x=>x.id===id);if(!next||next.id===activeCollectionId)return;
+    persistActiveCollection();activeCollection=next;activeCollectionId=next.id;words=activeCollection.words;persistActiveCollection();
+    practiceWord=null;practiceOrder=[];practicePos=0;testWord=null;testStage=0;testOrder=[];testPos=0;
+    $('entryStatus').textContent='';$('practiceStatus').textContent='';$('testStatus').textContent='';$('listStatus').textContent='';
+    renderCollectionPicker();refresh();applyLanguage();
+  }
+  function validateCollectionName(value,oldName){
+    const name=String(value||'').trim();
+    if(!name){alert(localizedText('Der Listenname darf nicht leer sein.'));return null;}
+    if(collectionStore.lists.some(x=>x.id!==oldName?.id&&x.name.toLocaleLowerCase()===name.toLocaleLowerCase())){alert(localizedText('Eine Liste mit diesem Namen existiert bereits.'));return null;}
+    return name;
+  }
+  function createCollection(){
+    const value=prompt(localizedText('Name der neuen Liste eingeben:'));if(value===null)return;
+    const name=validateCollectionName(value);if(name===null)return;
+    persistActiveCollection();
+    const item={id:newCollectionId(),name,words:[]};collectionStore.lists.push(item);
+    const oldId=activeCollectionId;activeCollection=item;activeCollectionId=item.id;words=item.words;
+    practiceWord=null;practiceOrder=[];practicePos=0;testWord=null;testStage=0;testOrder=[];testPos=0;
+    $('entryStatus').textContent=localizedText('Liste erstellt.');
+    save();closeCollectionMenu();
+  }
+  function renameCollection(id){
+    const item=collectionStore.lists.find(x=>x.id===id);if(!item)return;
+    const value=prompt(localizedText('Neuen Namen für die Liste eingeben:'),item.name);if(value===null)return;
+    const name=validateCollectionName(value,item);if(name===null)return;
+    item.name=name;if(item.id===activeCollectionId)activeCollection=item;
+    $('entryStatus').textContent=localizedText('Listenname geändert.');save();renderCollectionPicker();
+  }
+  function deleteCollection(id){
+    const item=collectionStore.lists.find(x=>x.id===id);if(!item||item.id===activeCollectionId)return;
+    if(collectionStore.lists.length<=1){alert(localizedText('Mindestens eine Liste muss erhalten bleiben.'));return;}
+    if(!confirm(localizedText('Diese Liste und alle darin gespeicherten Vokabeln und Lernstände endgültig löschen?')+'\n\n'+item.name))return;
+    collectionStore.lists=collectionStore.lists.filter(x=>x.id!==id);
+    $('listStatus').textContent=localizedText('Liste gelöscht.');save();renderCollectionPicker();
+  }
+  $('collectionToggle').addEventListener('click',()=>{const menu=$('collectionMenu'),open=menu.hidden;menu.hidden=!open;$('collectionToggle').setAttribute('aria-expanded',String(open));});
+  $('editCurrentCollection').addEventListener('click',()=>renameCollection(activeCollectionId));
+  document.addEventListener('click',e=>{if(!$('collectionSwitcher').contains(e.target))closeCollectionMenu();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCollectionMenu();});
 
   Object.assign(localePhrases, {"Fremdsprache":["Foreign language","Idioma extranjero","Иностранный язык","外语","外国語","Langue étrangère","Lingua straniera","Іноземна мова","اللغة الأجنبية","Yabancı dil","Język obcy"],"Muttersprache":["Native language","Lengua materna","Родной язык","母语","母語","Langue maternelle","Lingua madre","Рідна мова","اللغة الأم","Ana dili","Język ojczysty"],"Hinweis":["Pronunciation","Pronunciación","Произношение","发音","発音","Prononciation","Pronuncia","Вимова","النطق","Telaffuz","Wymowa"],"Gewusst":["Known","Correct","Знано","已知","わかった","Su","Conosciuta","Відомо","معروفة","Bilindi","Znane"],"Zeitstempel":["Timestamp","Marca de tiempo","Временная метка","时间戳","タイムスタンプ","Horodatage","Data e ora","Часова мітка","الطابع الزمني","Zaman damgası","Znacznik czasu"],"Zum Sortieren auf eine Spaltenüberschrift klicken.":["Click a column heading to sort.","Haz clic en un encabezado para ordenar.","Нажмите заголовок столбца для сортировки.","点击列标题进行排序。","列見出しをクリックして並べ替えます。","Cliquez sur un en-tête pour trier.","Fai clic su un'intestazione per ordinare.","Натисніть заголовок стовпця для сортування.","انقر عنوان العمود للفرز.","Sıralamak için sütun başlığına tıklayın.","Kliknij nagłówek kolumny, aby sortować."],"Oberflächensprache":["Interface language","Idioma de la interfaz","Язык интерфейса","界面语言","インターフェース言語","Langue de l’interface","Lingua dell’interfaccia","Мова інтерфейсу","لغة الواجهة","Arayüz dili","Język interfejsu"],"Der Lernfortschritt wird lokal in diesem Browser gespeichert.":["Learning progress is saved locally in this browser.","El progreso se guarda localmente en este navegador.","Прогресс сохраняется локально в этом браузере.","学习进度保存在此浏览器本地。","学習の進捗はこのブラウザーに保存されます。","La progression est enregistrée localement dans ce navigateur.","I progressi vengono salvati localmente in questo browser.","Прогрес зберігається локально в цьому браузері.","يُحفظ التقدم محليًا في هذا المتصفح.","Öğrenme ilerlemesi bu tarayıcıda yerel olarak kaydedilir.","Postępy są zapisywane lokalnie w tej przeglądarce."],"Lernrichtung spiegeln (Muttersprache → Fremdsprache)":["Reverse learning direction (native → foreign language)","Invertir dirección (lengua materna → extranjera)","Обратное направление (родной → иностранный)","反转学习方向（母语 → 外语）","学習方向を反転（母語 → 外国語）","Inverser le sens (langue maternelle → étrangère)","Inverti direzione (madrelingua → straniera)","Змінити напрямок (рідна → іноземна)","عكس اتجاه التعلم (اللغة الأم ← الأجنبية)","Öğrenme yönünü tersine çevir (ana dil → yabancı dil)","Odwróć kierunek (ojczysty → obcy)"],"Gesamten Lernfortschritt zurücksetzen":["Reset all learning progress","Restablecer todo el progreso","Сбросить весь прогресс","重置全部学习进度","すべての学習進捗をリセット","Réinitialiser toute la progression","Azzera tutti i progressi","Скинути весь прогрес","إعادة ضبط كل التقدم","Tüm öğrenme ilerlemesini sıfırla","Zresetuj wszystkie postępy"],"Alle Vokabeln löschen":["Delete all vocabulary","Eliminar todo el vocabulario","Удалить все слова","删除所有词汇","すべての単語を削除","Supprimer tout le vocabulaire","Elimina tutti i vocaboli","Видалити всі слова","حذف جميع المفردات","Tüm kelimeleri sil","Usuń wszystkie słówka"],"Keine fälligen Vokabeln übrig.":["No vocabulary due.","No quedan palabras pendientes.","Нет слов для повторения.","没有待复习词汇。","復習する単語はありません。","Aucun mot à réviser.","Nessun vocabolo da ripassare.","Немає слів для повторення.","لا توجد مفردات مستحقة.","Tekrar edilecek kelime kalmadı.","Brak słówek do powtórki."],"kein Hinweis":["no hint","sin pista","нет подсказки","无提示","ヒントなし","aucun indice","nessun suggerimento","немає підказки","لا يوجد تلميح","ipucu yok","brak podpowiedzi"],"Bitte Vokabel und Übersetzung ausfüllen.":["Please enter the vocabulary and translation.","Introduce la palabra y su traducción.","Введите слово и перевод.","请填写词汇和翻译。","単語と訳を入力してください。","Veuillez saisir le mot et sa traduction.","Inserisci il vocabolo e la traduzione.","Введіть слово та переклад.","يرجى إدخال المفردة وترجمتها.","Lütfen kelimeyi ve çevirisini girin.","Wpisz słówko i tłumaczenie."],"Vokabel eingetragen.":["Vocabulary added.","Palabra añadida.","Слово добавлено.","词汇已添加。","単語を追加しました。","Vocabulaire ajouté.","Vocabolo aggiunto.","Слово додано.","تمت إضافة المفردة.","Kelime eklendi.","Dodano słówko."],"Diese Vokabel wirklich löschen?":["Really delete this vocabulary item?","¿Eliminar esta palabra?","Действительно удалить это слово?","确定删除此词汇吗？","この単語を本当に削除しますか？","Supprimer vraiment ce vocabulaire ?","Eliminare davvero questo vocabolo?","Справді видалити це слово?","هل تريد حذف هذه المفردة؟","Bu kelime gerçekten silinsin mi?","Czy na pewno usunąć to słówko?"],"Vokabel löschen":["Delete vocabulary","Eliminar palabra","Удалить слово","删除词汇","単語を削除","Supprimer le vocabulaire","Elimina vocabolo","Видалити слово","حذف المفردة","Kelimeyi sil","Usuń słówko"],"fällig":["due","pendiente","пора повторить","到期","復習時期","à réviser","da ripassare","до повторення","مستحقة","tekrar zamanı","do powtórki"],"insgesamt":["total","en total","всего","总计","合計","au total","in totale","усього","الإجمالي","toplam","łącznie"],"noch nicht getestet":["not tested yet","sin probar","ещё не проверено","尚未测试","未テスト","pas encore testé","non ancora testato","ще не перевірено","لم يُختبر بعد","henüz test edilmedi","jeszcze nieprzetestowane"]});
 
@@ -633,7 +764,7 @@ th {
     const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
     let node;
     while((node=walker.nextNode())) {
-      if(!node.parentElement || ['SCRIPT','STYLE','OPTION'].includes(node.parentElement.tagName)) continue;
+      if(!node.parentElement || ['SCRIPT','STYLE','OPTION'].includes(node.parentElement.tagName) || node.parentElement.closest('[data-no-translate]')) continue;
       if(!originalTextNodes.has(node)) originalTextNodes.set(node,node.nodeValue);
       const original=originalTextNodes.get(node).trim();
       const arrowMatch=original.match(/\s([↑↓])$/);
@@ -689,8 +820,8 @@ th {
     languagePicker.addEventListener('change',()=>{
       settings.uiLanguage=languagePicker.value;
       localStorage.setItem(SET_KEY,JSON.stringify(settings));
-      fillTrainerLanguageSelect('foreignLanguage',settings.foreignLanguage||'ja');fillTrainerLanguageSelect('nativeLanguage',settings.nativeLanguage||'de');
-      refresh();
+      fillTrainerLanguageSelect('foreignLanguage',settings.foreignLanguage||'de');fillTrainerLanguageSelect('nativeLanguage',settings.nativeLanguage||'de');
+      renderCollectionPicker();refresh();
       applyLanguage();
     });
   }
@@ -1189,14 +1320,14 @@ th {
     el:['Γερμανικά','Αγγλικά','Ισπανικά','Ρωσικά','Κινέζικα','Ιαπωνικά','Γαλλικά','Ιταλικά','Ουκρανικά','Αραβικά','Τουρκικά','Πολωνικά','Ελληνικά']
   };
   function fillTrainerLanguageSelect(id,defaultCode){const el=$(id);if(!el)return;const keep=el.value;el.innerHTML='';const names=languageNamesByUI[settings.uiLanguage||'de']||languageNamesByUI.de;trainerLanguages.forEach(([code,label],i)=>{const o=document.createElement('option');o.value=code;o.textContent=label.split(' ').slice(0,1).join(' ')+' '+(names[i]||label);el.appendChild(o)});el.value=trainerLanguages.some(x=>x[0]===keep)?keep:defaultCode;}
-  fillTrainerLanguageSelect('foreignLanguage','ja');fillTrainerLanguageSelect('nativeLanguage','de');
+  fillTrainerLanguageSelect('foreignLanguage','de');fillTrainerLanguageSelect('nativeLanguage','de');
   const foreignPicker=$('foreignLanguage'),nativePicker=$('nativeLanguage');
-  if(foreignPicker)foreignPicker.value=settings.foreignLanguage||'ja';
+  if(foreignPicker)foreignPicker.value=settings.foreignLanguage||'de';
   if(nativePicker)nativePicker.value=settings.nativeLanguage||'de';
   [foreignPicker,nativePicker].forEach(el=>el&&el.addEventListener('change',()=>{settings.foreignLanguage=foreignPicker.value;settings.nativeLanguage=nativePicker.value;saveSettings();}));
-  async function translateEntry(from,to){const src=$(from),dst=$(to),text=src.value.trim();if(!text){$('entryStatus').textContent='Bitte zuerst Text eingeben.';return;}const button=from==='translation' ? $('translateWord') : $('translateTranslation');button.disabled=true;try{const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+encodeURIComponent(from==='translation'?(settings.nativeLanguage||'de'):(settings.foreignLanguage||'ja'))+'&tl='+encodeURIComponent(from==='translation'?(settings.foreignLanguage||'ja'):(settings.nativeLanguage||'de'))+'&dt=t&q='+encodeURIComponent(text);const response=await fetch(url);if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();const translated=(data[0]||[]).map(x=>x&&x[0]||'').join('');if(!translated)throw new Error('Keine Übersetzung');dst.value=translated;$('entryStatus').textContent='Übersetzung eingefügt.';}catch(e){$('entryStatus').textContent='Übersetzung fehlgeschlagen. Internetverbindung prüfen.';}finally{button.disabled=false;}}
+  async function translateEntry(from,to){const src=$(from),dst=$(to),text=src.value.trim();if(!text){$('entryStatus').textContent='Bitte zuerst Text eingeben.';return;}const button=from==='translation' ? $('translateWord') : $('translateTranslation');button.disabled=true;try{const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+encodeURIComponent(from==='translation'?(settings.nativeLanguage||'de'):(settings.foreignLanguage||'de'))+'&tl='+encodeURIComponent(from==='translation'?(settings.foreignLanguage||'de'):(settings.nativeLanguage||'de'))+'&dt=t&q='+encodeURIComponent(text);const response=await fetch(url);if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();const translated=(data[0]||[]).map(x=>x&&x[0]||'').join('');if(!translated)throw new Error('Keine Übersetzung');dst.value=translated;$('entryStatus').textContent='Übersetzung eingefügt.';}catch(e){$('entryStatus').textContent='Übersetzung fehlgeschlagen. Internetverbindung prüfen.';}finally{button.disabled=false;}}
   $('translateWord').addEventListener('click',()=>translateEntry('translation','word'));$('translateTranslation').addEventListener('click',()=>translateEntry('word','translation'));
-  $('speakEntryWord').addEventListener('click',()=>speakTrainer($('word').value,settings.foreignLanguage||'ja'));$('speakEntryTranslation').addEventListener('click',()=>speakTrainer($('translation').value,settings.nativeLanguage||'de'));
+  $('speakEntryWord').addEventListener('click',()=>speakTrainer($('word').value,settings.foreignLanguage||'de'));$('speakEntryTranslation').addEventListener('click',()=>speakTrainer($('translation').value,settings.nativeLanguage||'de'));
   function speakTrainer(text,code){
     text=String(text||'').trim();if(!text)return;
     if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){alert(localePhrases['Sprachausgabe wird nicht unterstützt.']?.[{de:-1,en:0,es:1,ru:2,zh:3,ja:4,fr:5,it:6,uk:7,ar:8,tr:9,pl:10,el:11}[settings.uiLanguage]??0]||'Sprachausgabe wird nicht unterstützt.');return;}
@@ -1210,10 +1341,10 @@ th {
     function cleanup(){synth.removeEventListener('voiceschanged',ready);if(timeoutId)clearTimeout(timeoutId);}
     start();if(!started){synth.addEventListener('voiceschanged',ready);timeoutId=setTimeout(()=>{if(!started){utterance.lang=aliases[requested]||requested;started=true;cleanup();synth.speak(utterance);}},1500);}
   }
-  $('speakPracticeWord').addEventListener('click',()=>speakTrainer($('practiceWord').textContent,settings.mirrorDirection?(settings.nativeLanguage||'de'):(settings.foreignLanguage||'ja')));
-  $('speakPracticeSolution').addEventListener('click',()=>speakTrainer($('practiceSolution').textContent,settings.mirrorDirection?(settings.foreignLanguage||'ja'):(settings.nativeLanguage||'de')));
-  $('speakTestWord').addEventListener('click',()=>speakTrainer($('testWord').textContent,settings.mirrorDirection?(settings.nativeLanguage||'de'):(settings.foreignLanguage||'ja')));
-  $('speakTestSolution').addEventListener('click',()=>speakTrainer($('testSolution').textContent,settings.mirrorDirection?(settings.foreignLanguage||'ja'):(settings.nativeLanguage||'de')));
+  $('speakPracticeWord').addEventListener('click',()=>speakTrainer($('practiceWord').textContent,settings.mirrorDirection?(settings.nativeLanguage||'de'):(settings.foreignLanguage||'de')));
+  $('speakPracticeSolution').addEventListener('click',()=>speakTrainer($('practiceSolution').textContent,settings.mirrorDirection?(settings.foreignLanguage||'de'):(settings.nativeLanguage||'de')));
+  $('speakTestWord').addEventListener('click',()=>speakTrainer($('testWord').textContent,settings.mirrorDirection?(settings.nativeLanguage||'de'):(settings.foreignLanguage||'de')));
+  $('speakTestSolution').addEventListener('click',()=>speakTrainer($('testSolution').textContent,settings.mirrorDirection?(settings.foreignLanguage||'de'):(settings.nativeLanguage||'de')));
   function init(){
     $('randomPractice').checked=!!settings.randomPractice;
     $('randomTest').checked=!!settings.randomTest;
@@ -1221,6 +1352,7 @@ th {
     const picker=$('uiLanguage'); if(picker) picker.value=settings.uiLanguage||'de';
     buildPracticeOrder();
     buildTestOrder();
+    renderCollectionPicker();
     refresh();
     applyLanguage();
   }
@@ -1230,10 +1362,5 @@ th {
 
 </script>
  
-<script>
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker konnte nicht registriert werden:', err)));
-}
-</script>
 </body>
 </html>
