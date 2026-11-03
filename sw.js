@@ -1,6 +1,6 @@
 // Vokabeltrainer PWA – Service Worker
 // Bei jeder App-Version die Cache-Version erhöhen.
-const CACHE_NAME = 'vokabeltrainer-pwa-v1.1';
+const CACHE_NAME = 'vokabeltrainer-pwa-v1.2';
 const APP_FILES = [
   './',
   './index.html',
