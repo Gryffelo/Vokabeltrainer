@@ -280,7 +280,6 @@ th {
     box-shadow:0 2px 8px rgba(0,0,0,.07);
   }
   .language-select:focus { outline:3px solid rgba(70,120,220,.22); outline-offset:2px; }
-  .language-flag{display:inline-block;margin-right:5px;font-size:1.12em;vertical-align:-.06em;}
   .translate-field,.speak-card{display:block;margin:7px 0 0;background:#e8f0fe;color:#174ea6;border-radius:8px;padding:8px 11px;font-weight:600;}
   .delete-cell { width:48px; text-align:center; }
   .delete-one {
@@ -338,19 +337,19 @@ th {
    </header>
    <div id="pwaUpdateArea" class="pwa-update" role="status" aria-live="polite"><p id="pwaUpdateMessage" class="pwa-update-message">Eine neue Version ist verfügbar.</p><button type="button" class="primary" id="pwaUpdateButton">Jetzt aktualisieren</button><button type="button" id="pwaUpdateLater">Später</button></div>
     <nav id="tabs">
-    <button class="active" data-tab="entry">
+    <button class="active" data-tab="entry" data-i18n="tab.entry">
      Eintragen
     </button>
-    <button data-tab="practice">
+    <button data-tab="practice" data-i18n="tab.practice">
      Üben
     </button>
-    <button data-tab="test">
+    <button data-tab="test" data-i18n="tab.test">
      Testen
     </button>
-    <button data-tab="list">
+    <button data-tab="list" data-i18n="tab.list">
      Liste
     </button>
-    <button data-tab="settings">
+    <button data-tab="settings" data-i18n="tab.settings">
      Einstellungen
     </button>
    </nav>
@@ -361,13 +360,13 @@ th {
     <div class="row">
      <div>
       <label for="word">
-       <span id="foreignLanguageFlag" class="language-flag" aria-hidden="true">🇩🇪</span> Spalte 1 – Fremdsprache
+       Spalte 1 – Fremdsprache
       </label>
       <input id="word" type="text"/><button type="button" class="speak-card" id="speakEntryWord">🔊 Vorlesen</button><button type="button" class="translate-field" id="translateWord">Übersetzen aus Muttersprache</button>
      </div>
      <div>
       <label for="translation">
-       <span id="nativeLanguageFlag" class="language-flag" aria-hidden="true">🇩🇪</span> Spalte 2 – Muttersprache
+       Spalte 2 – Muttersprache
       </label>
       <input id="translation" type="text"/><button type="button" class="speak-card" id="speakEntryTranslation">🔊 Vorlesen</button><button type="button" class="translate-field" id="translateTranslation">Übersetzen aus Fremdsprache</button>
      </div>
@@ -521,7 +520,7 @@ th {
          Hinweis
         </th>
         <th>
-         Index
+         Gewusst
         </th>
         <th>
          Zeitstempel
@@ -578,6 +577,7 @@ th {
   </div>
   <script>
 
+
 (()=>{
   'use strict';
   const DATA_KEY='vokabeltrainer_data_v3',SET_KEY='vokabeltrainer_settings_v3',COLLECTION_KEY='vokabeltrainer_collections_v1',MINUTE=60000,BASE=10*MINUTE;
@@ -615,7 +615,7 @@ th {
     try{
       const raw=JSON.parse(localStorage.getItem(COLLECTION_KEY)||'null');
       if(raw&&Array.isArray(raw.lists)&&raw.lists.length){
-        const lists=raw.lists.filter(x=>x&&typeof x.name==='string'&&x.name.trim()).map((x,i)=>({id:String(x.id||('list-'+i+'-'+Date.now())),name:x.name.trim(),words:Array.isArray(x.words)?x.words.map(normalize):[],foreignLanguage:typeof x.foreignLanguage==='string'&&x.foreignLanguage.trim()?x.foreignLanguage:null,nativeLanguage:typeof x.nativeLanguage==='string'&&x.nativeLanguage.trim()?x.nativeLanguage:null}));
+        const lists=raw.lists.filter(x=>x&&typeof x.name==='string'&&x.name.trim()).map((x,i)=>({id:String(x.id||('list-'+i+'-'+Date.now())),name:x.name.trim(),words:Array.isArray(x.words)?x.words.map(normalize):[]}));
         if(lists.length)return {lists,selectedId:lists.some(x=>x.id===raw.selectedId)?raw.selectedId:lists[0].id};
       }
     }catch(e){}
@@ -628,25 +628,8 @@ th {
   }
   function persistActiveCollection(){
     activeCollection.words=words;
-    // Sprachpaar gehört zur jeweiligen Lernliste und wird zusammen mit ihr gespeichert.
-    activeCollection.foreignLanguage=settings.foreignLanguage||'de';
-    activeCollection.nativeLanguage=settings.nativeLanguage||'de';
     collectionStore.selectedId=activeCollectionId;
     try{localStorage.setItem(COLLECTION_KEY,JSON.stringify(collectionStore));localStorage.setItem(DATA_KEY,JSON.stringify(words));}catch(e){console.warn('Speichern fehlgeschlagen',e);}
-  }
-  function restoreCollectionLanguages(collection){
-    if(!collection)return;
-    // Ältere Listen haben noch keine Sprachmetadaten: aktuelle Auswahl beibehalten.
-    if(typeof collection.foreignLanguage==='string'&&collection.foreignLanguage)settings.foreignLanguage=collection.foreignLanguage;
-    if(typeof collection.nativeLanguage==='string'&&collection.nativeLanguage)settings.nativeLanguage=collection.nativeLanguage;
-    // Fehlende Sprachangaben beim ersten Öffnen mit der aktuellen Auswahl ergänzen.
-    collection.foreignLanguage=settings.foreignLanguage||'de';
-    collection.nativeLanguage=settings.nativeLanguage||'de';
-    saveSettings();
-    const foreign=$('foreignLanguage'),native=$('nativeLanguage');
-    if(foreign)foreign.value=settings.foreignLanguage;
-    if(native)native.value=settings.nativeLanguage;
-    if(typeof updateEntryLanguageFlags==='function')updateEntryLanguageFlags();
   }
   function newCollectionId(){return (window.crypto&&typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():'list-'+Date.now()+'-'+Math.random().toString(36).slice(2);}
   function normalize(w){
@@ -684,194 +667,173 @@ th {
     renderCollectionPicker();
   }
   const $=id=>document.getElementById(id);
-  const localePhrases={"Eintragen":["Add","Añadir","Добавить","添加","登録","Ajouter","Inserisci","Додати","إضافة"],"Üben":["Practice","Practicar","Практика","练习","練習","Pratiquer","Esercizio","Вправи","تدرّب"],"Testen":["Test","Evaluar","Тест","测试","テスト","Tester","Test","Тест","اختبار"],"Liste":["List","Lista","Список","列表","リスト","Liste","Elenco","Список","القائمة"],"Einstellungen":["Settings","Configuración","Настройки","设置","設定","Paramètres","Impostazioni","Налаштування","الإعدادات"],"Vokabel eintragen":["Add vocabulary","Añadir vocabulario","Добавить слово","添加词汇","単語を登録","Ajouter du vocabulaire","Inserisci vocabolo","Додати слово","أضف مفردة"],"Spalte 1 – Fremdsprache":["Column 1 – Foreign language","Columna 1 – Idioma extranjero","Столбец 1 — Иностранный язык","第1列—外语","列1・外国語","Colonne 1 – Langue étrangère","Colonna 1 – Lingua straniera","Стовпець 1 — Іноземна мова","العمود 1 – اللغة الأجنبية"],"Spalte 2 – Muttersprache":["Column 2 – Native language","Columna 2 – Lengua materna","Столбец 2 — Родной язык","第2列—母语","列2・母語","Colonne 2 – Langue maternelle","Colonna 2 – Lingua madre","Стовпець 2 — Рідна мова","العمود 2 – اللغة الأم"],"Spalte 3 – Hinweis (optional)":["Column 3 – Pronunciation hint (optional)","Columna 3 – Pronunciación (opcional)","Столбец 3 — Подсказка произношения (необязательно)","第3列—发音提示（可选）","列3・発音ヒント（任意）","Colonne 3 – Aide à la prononciation (facultatif)","Colonna 3 – Suggerimento pronuncia (facoltativo)","Стовпець 3 — Підказка вимови (необов’язково)","العمود 3 – تلميح النطق (اختياري)"],"Excel exportieren":["Export Excel","Exportar Excel","Экспорт Excel","导出 Excel","Excelを書き出す","Exporter Excel","Esporta Excel","Експорт Excel","تصدير Excel"],"Excel importieren":["Import Excel","Importar Excel","Импорт Excel","导入 Excel","Excelを読み込む","Importer Excel","Importa Excel","Імпорт Excel","استيراد Excel"],"Zufällige Reihenfolge aller fälligen Vokabeln":["Random order for all due words","Orden aleatorio de palabras pendientes","Случайный порядок всех слов к повторению","所有到期词随机排序","期限の単語をランダムに出題","Ordre aléatoire des mots à réviser","Ordine casuale delle parole da ripassare","Випадковий порядок усіх слів до повторення","ترتيب عشوائي لكل المفردات المستحقة"],"Hinweis anzeigen":["Show hint","Mostrar pista","Показать подсказку","显示提示","ヒントを表示","Afficher l’indice","Mostra suggerimento","Показати підказку","إظهار التلميح"],"Lösung anzeigen":["Show answer","Mostrar solución","Показать ответ","显示答案","答えを表示","Afficher la réponse","Mostra risposta","Показати відповідь","إظهار الإجابة"],"Gewusst":["Known","La sabía","Знаю","认识","わかった","Su","Conosciuta","Знаю","أعرفها"],"Nicht gewusst":["Not known","No la sabía","Не знаю","不认识","わからない","Non su","Non conosciuta","Не знаю","لا أعرفها"],"Test neu starten":["Restart test","Reiniciar prueba","Перезапустить тест","重新开始测试","テストを再開","Recommencer le test","Ricomincia test","Перезапустити тест","إعادة الاختبار"],"Zufällige Reihenfolge":["Random order","Orden aleatorio","Случайный порядок","随机顺序","ランダム順","Ordre aléatoire","Ordine casuale","Випадковий порядок","ترتيب عشوائي"],"Vokabelliste":["Vocabulary list","Lista de vocabulario","Список слов","词汇表","単語リスト","Liste de vocabulaire","Elenco vocaboli","Список слів","قائمة المفردات"],"Chronologisch":["Chronological","Cronológico","По времени","按时间","時系列","Chronologique","Cronologico","Хронологічно","زمني"],"Alphabetisch":["Alphabetical","Alfabético","По алфавиту","按字母","アルファベット順","Alphabétique","Alfabetico","За абеткою","أبجدي"],"Fremdsprache":["Foreign language","Idioma extranjero","Иностранный язык","外语","外国語","Langue étrangère","Lingua straniera","Іноземна мова","اللغة الأجنبية","Yabancı dil","Język obcy"],"Muttersprache":["Native language","Lengua materna","Родной язык","母语","母語","Langue maternelle","Lingua madre","Рідна мова","اللغة الأم","Ana dili","Język ojczysty"],"Hinweis":["Hint","Pista","Подсказка","提示","ヒント","Indice","Suggerimento","Підказка","تلميح","İpucu","Podpowiedź"],"Gewusst":["Known","Conocido","Знаю","已知","わかった","Connu","Conosciuto","Відомо","معروف","Bilindi","Znane"],"Zeitstempel":["Timestamp","Marca de tiempo","Временная метка","时间戳","タイムスタンプ","Horodatage","Timestamp","Часова позначка","الطابع الزمني"],"Der Lernfortschritt wird lokal in diesem Browser gespeichert.":["Learning progress is stored locally in this browser.","El progreso se guarda localmente en este navegador.","Прогресс обучения хранится локально в этом браузере.","学习进度保存在此浏览器本地。","学習の進捗はこのブラウザーに保存されます。","La progression est enregistrée localement dans ce navigateur.","I progressi sono salvati localmente in questo browser.","Прогрес навчання зберігається локально в цьому браузері.","يتم حفظ التقدم محليًا في هذا المتصفح."],"Lernrichtung spiegeln (Muttersprache → Fremdsprache)":["Reverse learning direction (native → foreign)","Invertir dirección (materna → extranjera)","Обратное направление (родной → иностранный)","反转学习方向（母语→外语）","学習方向を反転（母語→外国語）","Inverser le sens (maternelle → étrangère)","Inverti direzione (madrelingua → straniera)","Змінити напрямок (рідна → іноземна)","عكس الاتجاه (الأم → الأجنبية)"],"Gesamten Lernfortschritt zurücksetzen":["Reset all learning progress","Restablecer todo el progreso","Сбросить весь прогресс","重置全部学习进度","学習進捗をすべてリセット","Réinitialiser toute la progression","Azzera tutti i progressi","Скинути весь прогрес","إعادة ضبط التقدم كله"],"Alle Vokabeln löschen":["Delete all vocabulary","Eliminar todo el vocabulario","Удалить все слова","删除所有词汇","すべての単語を削除","Supprimer tout le vocabulaire","Elimina tutti i vocaboli","Видалити всі слова","حذف جميع المفردات"],"Oberflächensprache":["Interface language","Idioma de la interfaz","Язык интерфейса","界面语言","インターフェース言語","Langue de l’interface","Lingua dell’interfaccia","Мова інтерфейсу","لغة الواجهة"],"Vokabeltrainer":["Vocabulary Trainer","Entrenador de vocabulario","Тренажёр слов","词汇训练器","単語トレーナー","Entraîneur de vocabulaire","Allenatore di vocaboli","Тренажер слів","مدرّب المفردات"],"Vokabel eingetragen.":["Vocabulary added.","Vocabulario añadido.","Слово добавлено.","词汇已添加。","単語を登録しました。","Vocabulaire ajouté.","Vocabolo inserito.","Слово додано.","تمت إضافة المفردة."],"Bitte Vokabel und Übersetzung ausfüllen.":["Please enter the word and translation.","Introduce la palabra y la traducción.","Введите слово и перевод.","请填写词汇和翻译。","単語と訳を入力してください。","Veuillez saisir le mot et sa traduction.","Inserisci il vocabolo e la traduzione.","Введіть слово та переклад.","يرجى إدخال المفردة والترجمة."],"Keine fälligen Vokabeln übrig.":["No due vocabulary left.","No quedan palabras pendientes.","Нет слов для повторения.","没有待复习词汇。","復習する単語はありません。","Aucun mot à réviser.","Nessun vocabolo da ripassare.","Немає слів для повторення.","لا توجد مفردات مستحقة."],"Noch keine fälligen Vokabeln":["No vocabulary due yet","Aún no hay palabras pendientes","Пока нет слов к повторению","暂无到期词汇","まだ復習する単語はありません","Aucun mot à réviser pour le moment","Nessun vocabolo da ripassare","Поки немає слів до повторення","لا توجد مفردات مستحقة بعد"],"Keine Vokabeln zum Testen.":["No vocabulary to test.","No hay vocabulario para evaluar.","Нет слов для тестирования.","没有可测试的词汇。","テストする単語がありません。","Aucun vocabulaire à tester.","Nessun vocabolo da testare.","Немає слів для тестування.","لا توجد مفردات للاختبار."],"Keine Vokabeln zum Testen übrig.":["No vocabulary left to test.","No queda vocabulario para evaluar.","Слова для тестирования закончились.","没有剩余可测试词汇。","テストする単語は残っていません。","Il ne reste aucun mot à tester.","Non restano vocaboli da testare.","Слів для тестування більше немає.","لم تعد هناك مفردات للاختبار."],"Richtig – nächste Wiederholung in ":["Correct – next review in ","Correcto: próxima revisión en ","Верно — следующее повторение через ","正确 — 下次复习时间：","正解 — 次の復習まで ","Correct — prochaine révision dans ","Corretto — prossimo ripasso tra ","Правильно — наступне повторення через ","صحيح — المراجعة التالية خلال "],"Als gewusst markiert; Lernstand unverändert.":["Marked as known; progress unchanged.","Marcada como conocida; progreso sin cambios.","Отмечено как известное; прогресс не изменён.","已标记为认识；学习进度不变。","既知としてマークしました。進捗は変更されません。","Marqué comme connu ; progression inchangée.","Segnato come conosciuto; progressi invariati.","Позначено як відоме; прогрес без змін.","تم وضع علامة «معروفة»؛ التقدم لم يتغير."],"Nicht gewusst: Index zurückgesetzt, jetzt wieder fällig.":["Not known: index reset; due again now.","No conocida: índice reiniciado; vuelve a tocar ahora.","Неизвестно: индекс сброшен, повторить сейчас.","不认识：索引已重置，现在需要复习。","不明：インデックスをリセットし、今すぐ復習対象にしました。","Non connu : indice réinitialisé, à revoir maintenant.","Non conosciuto: indice azzerato, da ripassare ora.","Не відомо: індекс скинуто, повторити зараз.","غير معروفة: تمت إعادة ضبط المؤشر وهي مستحقة الآن."],"Test neu gestartet.":["Test restarted.","Prueba reiniciada.","Тест перезапущен.","测试已重新开始。","テストを再開しました。","Test redémarré.","Test riavviato.","Тест перезапущено.","تمت إعادة الاختبار."],"Lernfortschritt zurückgesetzt.":["Learning progress reset.","Progreso restablecido.","Прогресс обучения сброшен.","学习进度已重置。","学習進捗をリセットしました。","Progression réinitialisée.","Progressi azzerati.","Прогрес навчання скинуто.","تمت إعادة ضبط التقدم."],"Alle Vokabeln gelöscht.":["All vocabulary deleted.","Todo el vocabulario eliminado.","Все слова удалены.","所有词汇已删除。","すべての単語を削除しました。","Tout le vocabulaire a été supprimé.","Tutti i vocaboli eliminati.","Усі слова видалено.","تم حذف جميع المفردات."]};
-  const greekPhrases={"Duplikate löschen": "Διαγραφή διπλοτύπων", "Duplikate gefunden. Wirklich löschen?": "Βρέθηκαν διπλότυπα. Θέλετε πράγματι να διαγραφούν;", "Duplikate gelöscht.": "Τα διπλότυπα διαγράφηκαν.", "Keine Duplikate gefunden.": "Δεν βρέθηκαν διπλότυπα.", "Fremdsprache": "Ξένη γλώσσα", "Muttersprache": "Μητρική γλώσσα", "Hinweis": "Προφορά", "Gewusst": "Γνωστό", "Zeitstempel": "Χρονική σήμανση", "Chronologisch": "Χρονολογικά", "Alphabetisch": "Αλφαβητικά", "Richtig – nächste Wiederholung in ": "Σωστά — επόμενη επανάληψη σε ", "fällig": "σε επανάληψη", "insgesamt": "συνολικά", "noch nicht getestet": "δεν έχουν εξεταστεί", "Vokabelliste": "Λίστα λεξιλογίου", "Zum Sortieren auf eine Spaltenüberschrift klicken.": "Κάντε κλικ σε μια επικεφαλίδα για ταξινόμηση.", "Eintragen": "Καταχώριση", "Üben": "Εξάσκηση", "Testen": "Τεστ", "Liste": "Λίστα", "Einstellungen": "Ρυθμίσεις", "Vokabel eintragen": "Καταχώριση λέξης", "Spalte 1 – Fremdsprache": "Στήλη 1 – Ξένη γλώσσα", "Spalte 2 – Muttersprache": "Στήλη 2 – Μητρική γλώσσα", "Spalte 3 – Hinweis (optional)": "Στήλη 3 – Βοήθημα προφοράς (προαιρετικό)", "Excel exportieren": "Εξαγωγή Excel", "Excel importieren": "Εισαγωγή Excel", "Oberflächensprache": "Γλώσσα διεπαφής", "Lernrichtung spiegeln (Muttersprache → Fremdsprache)": "Αντιστροφή κατεύθυνσης (μητρική → ξένη γλώσσα)", "Gesamten Lernfortschritt zurücksetzen": "Επαναφορά όλης της προόδου", "Alle Vokabeln löschen": "Διαγραφή όλων των λέξεων", "Vokabel eingetragen.": "Η λέξη καταχωρίστηκε.", "Bitte Vokabel und Übersetzung ausfüllen.": "Συμπληρώστε τη λέξη και τη μετάφραση.", "Test neu gestartet.": "Το τεστ ξεκίνησε ξανά.", "Lernfortschritt zurückgesetzt.": "Η πρόοδος επαναφέρθηκε.", "Alle Vokabeln gelöscht.": "Όλες οι λέξεις διαγράφηκαν."};
-  Object.entries(greekPhrases).forEach(([k,v])=>{localePhrases[k]=localePhrases[k]||[];while(localePhrases[k].length<11)localePhrases[k].push('');localePhrases[k][11]=v;});
-  const greekMore={"Minuten": "λεπτά", "Minute": "λεπτό", "Stunden": "ώρες", "Stunde": "ώρα", "Tage": "ημέρες", "Tag": "ημέρα", "Index": "Γνωστό", "Vokabelliste": "Λίστα λεξιλογίου", "Duplikate löschen": "Διαγραφή διπλοτύπων", "Keine fälligen Vokabeln übrig.": "Δεν απομένουν λέξεις για επανάληψη.", "Keine Vokabeln zum Testen.": "Δεν υπάρχουν λέξεις για δοκιμή.", "Richtig – nächste Wiederholung in ": "Σωστά — επόμενη επανάληψη σε ", "Wird erneut geübt.": "Θα επαναληφθεί.", "Duplikate gefunden. Wirklich löschen?": "Βρέθηκαν διπλότυπα. Θέλετε πράγματι να διαγραφούν?", "Zum Sortieren auf eine Spaltenüberschrift klicken.": "Κάντε κλικ σε μια επικεφαλίδα για ταξινόμηση.", "Vokabel löschen": "Διαγραφή λέξης"};
-  Object.entries(greekMore).forEach(([k,v])=>{localePhrases[k]=localePhrases[k]||[];while(localePhrases[k].length<12)localePhrases[k].push('');localePhrases[k][11]=v;});
+  // UI text catalogue is loaded at the end of this HTML file.
+  const originalTextNodes = new WeakMap();
+  const originalAttributes = new WeakMap();
+  const missingUiKeys = new Set();
 
-  Object.assign(localePhrases,{
-    "Liste wählen":["Choose list","Elegir lista","Выбрать список","选择列表","リストを選択","Choisir une liste","Scegli elenco","Вибрати список","اختر قائمة","Liste seç","Wybierz listę","Επιλογή λίστας"],
-    "Liste umbenennen":["Rename list","Renombrar lista","Переименовать список","重命名列表","リスト名を変更","Renommer la liste","Rinomina elenco","Перейменувати список","إعادة تسمية القائمة","Listeyi yeniden adlandır","Zmień nazwę listy","Μετονομασία λίστας"],
-    "Liste löschen":["Delete list","Eliminar lista","Удалить список","删除列表","リストを削除","Supprimer la liste","Elimina elenco","Видалити список","حذف القائمة","Listeyi sil","Usuń listę","Διαγραφή λίστας"],
-    "Neue Liste hinzufügen":["Add new list","Añadir nueva lista","Добавить список","添加新列表","新しいリストを追加","Ajouter une liste","Aggiungi elenco","Додати список","إضافة قائمة جديدة","Yeni liste ekle","Dodaj nową listę","Προσθήκη νέας λίστας"],
-    "Name der neuen Liste eingeben:":["Enter the new list name:","Introduce el nombre de la nueva lista:","Введите название нового списка:","输入新列表名称：","新しいリスト名を入力してください：","Saisissez le nom de la nouvelle liste :","Inserisci il nome del nuovo elenco:","Введіть назву нового списку:","أدخل اسم القائمة الجديدة:","Yeni liste adını girin:","Wpisz nazwę nowej listy:","Εισαγάγετε το όνομα της νέας λίστας:"],
-    "Neuen Namen für die Liste eingeben:":["Enter a new name for the list:","Introduce un nuevo nombre para la lista:","Введите новое название списка:","输入列表的新名称：","リストの新しい名前を入力してください：","Saisissez un nouveau nom pour la liste :","Inserisci un nuovo nome per l'elenco:","Введіть нову назву списку:","أدخل اسمًا جديدًا للقائمة:","Liste için yeni bir ad girin:","Wpisz nową nazwę listy:","Εισαγάγετε νέο όνομα για τη λίστα:"],
-    "Der Listenname darf nicht leer sein.":["The list name cannot be empty.","El nombre de la lista no puede estar vacío.","Название списка не может быть пустым.","列表名称不能为空。","リスト名を空にすることはできません。","Le nom de la liste ne peut pas être vide.","Il nome dell'elenco non può essere vuoto.","Назва списку не може бути порожньою.","لا يمكن أن يكون اسم القائمة فارغًا.","Liste adı boş olamaz.","Nazwa listy nie może być pusta.","Το όνομα της λίστας δεν μπορεί να είναι κενό."],
-    "Eine Liste mit diesem Namen existiert bereits.":["A list with this name already exists.","Ya existe una lista con este nombre.","Список с таким названием уже существует.","已存在同名列表。","同じ名前のリストが既にあります。","Une liste portant ce nom existe déjà.","Esiste già un elenco con questo nome.","Список із такою назвою вже існує.","توجد قائمة بهذا الاسم بالفعل.","Bu ada sahip bir liste zaten var.","Lista o tej nazwie już istnieje.","Υπάρχει ήδη λίστα με αυτό το όνομα."],
-    "Diese Liste und alle darin gespeicherten Vokabeln und Lernstände endgültig löschen?":["Permanently delete this list and all vocabulary and learning progress stored in it?","¿Eliminar definitivamente esta lista y todo el vocabulario y progreso guardados en ella?","Безвозвратно удалить этот список, все слова и прогресс обучения в нём?","永久删除此列表及其中保存的所有词汇和学习进度？","このリストと、保存されているすべての単語および学習状況を完全に削除しますか？","Supprimer définitivement cette liste ainsi que tout le vocabulaire et la progression qu'elle contient ?","Eliminare definitivamente questo elenco e tutti i vocaboli e i progressi in esso contenuti?","Остаточно видалити цей список, усі слова та прогрес навчання в ньому?","هل تريد حذف هذه القائمة نهائيًا مع جميع المفردات والتقدم المحفوظ فيها؟","Bu listeyi ve içinde kayıtlı tüm kelimeleri ve öğrenme ilerlemesini kalıcı olarak silmek istiyor musunuz?","Czy trwale usunąć tę listę oraz wszystkie zapisane w niej słówka i postępy?","Να διαγραφεί οριστικά αυτή η λίστα και όλο το λεξιλόγιο και η πρόοδος που είναι αποθηκευμένα σε αυτή;"],
-    "Liste gelöscht.":["List deleted.","Lista eliminada.","Список удалён.","列表已删除。","リストを削除しました。","Liste supprimée.","Elenco eliminato.","Список видалено.","تم حذف القائمة.","Liste silindi.","Lista została usunięta.","Η λίστα διαγράφηκε."],
-    "Liste erstellt.":["List created.","Lista creada.","Список создан.","列表已创建。","リストを作成しました。","Liste créée.","Elenco creato.","Список створено.","تم إنشاء القائمة.","Liste oluşturuldu.","Lista została utworzona.","Η λίστα δημιουργήθηκε."],
-    "Listenname geändert.":["List renamed.","Nombre de la lista cambiado.","Название списка изменено.","列表名称已更改。","リスト名を変更しました。","Liste renommée.","Nome dell'elenco modificato.","Назву списку змінено.","تم تغيير اسم القائمة.","Liste adı değiştirildi.","Zmieniono nazwę listy.","Το όνομα της λίστας άλλαξε."],
-    "Mindestens eine Liste muss erhalten bleiben.":["At least one list must remain.","Debe quedar al menos una lista.","Должен остаться хотя бы один список.","必须至少保留一个列表。","少なくとも1つのリストを残す必要があります。","Au moins une liste doit être conservée.","Deve rimanere almeno un elenco.","Має залишитися принаймні один список.","يجب الاحتفاظ بقائمة واحدة على الأقل.","En az bir liste kalmalıdır.","Musi pozostać co najmniej jedna lista.","Πρέπει να παραμείνει τουλάχιστον μία λίστα."]
-  });
+  function t(id, values = {}) {
+    const catalogue = window.UI_TEXTS;
+    if (!catalogue || !catalogue.de) return `[${id}]`;
+    const language = settings.uiLanguage || 'de';
+    let text = catalogue[language]?.[id] ?? catalogue.de[id];
+    if (text === undefined) {
+      if (!missingUiKeys.has(id)) {
+        missingUiKeys.add(id);
+        window.UI_MISSING_RUNTIME_KEYS = [...missingUiKeys];
+        console.warn('UI text key missing:', id);
+      }
+      return `[${id}]`;
+    }
+    return String(text).replace(/\{([a-zA-Z0-9_]+)\}/g, (match, name) =>
+      Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : match
+    );
+  }
 
-  function localizedText(key){const lang=settings.uiLanguage||'de';const ix={de:-1,en:0,es:1,ru:2,zh:3,ja:4,fr:5,it:6,uk:7,ar:8,tr:9,pl:10,el:11}[lang]??-1;const row=localePhrases[key];return ix<0?key:(row&&row[ix]||key);}
+  // Compatibility bridge for existing code and static text nodes.
+  // New code should use t('area.stable_key') directly.
+  function localizedText(germanSource, values = {}) {
+    const key = window.UI_TEXT_IDS?.[germanSource];
+    if (!key) {
+      if (!missingUiKeys.has(germanSource)) {
+        missingUiKeys.add(germanSource);
+        console.warn('Unmapped UI source text:', germanSource);
+      }
+      return germanSource;
+    }
+    return t(key, values);
+  }
+
+  function applyLanguage() {
+    const lang = settings.uiLanguage || 'de';
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const parent = node.parentElement;
+      if (!parent || ['SCRIPT','STYLE','OPTION'].includes(parent.tagName)) continue;
+      if (parent.closest('[data-no-translate], input, textarea, .word, .revealed, #wordRows, #practiceWord, #testWord, #collectionToggle, .collection-add, #practiceCount, #testCount, #practiceStatus, #testStatus, #entryStatus, #listStatus, #settingsStatus, #list thead th[data-sort]')) continue;
+      if (!originalTextNodes.has(node)) originalTextNodes.set(node, node.nodeValue);
+      const original = String(originalTextNodes.get(node) || '');
+      const trimmed = original.trim();
+      if (!trimmed) continue;
+      const arrow = trimmed.match(/\s([↑↓])$/);
+      const base = arrow ? trimmed.slice(0, -2).trimEnd() : trimmed;
+      const key = parent.getAttribute('data-i18n') || window.UI_TEXT_IDS?.[base];
+      if (!key) continue;
+      const leading = original.match(/^\s*/)?.[0] || '';
+      const trailing = original.match(/\s*$/)?.[0] || '';
+      const translated = leading + t(key) + (arrow ? ' ' + arrow[1] : '') + trailing;
+      if (node.nodeValue !== translated) node.nodeValue = translated;
+    }
+
+    // Translate static accessibility and browser tooltip attributes as well.
+    const attributeNames = ['title','aria-label','placeholder','alt'];
+    document.querySelectorAll('body *').forEach(element => {
+      if (element.closest('[data-no-translate]')) return;
+      let stored = originalAttributes.get(element);
+      if (!stored) { stored = {}; originalAttributes.set(element, stored); }
+      for (const attribute of attributeNames) {
+        if (!element.hasAttribute(attribute)) continue;
+        if (!(attribute in stored)) stored[attribute] = element.getAttribute(attribute);
+        const source = stored[attribute];
+        const key = element.getAttribute(`data-i18n-${attribute}`) || window.UI_TEXT_IDS?.[source];
+        if (key) element.setAttribute(attribute, t(key));
+      }
+    });
+
+    const title = document.querySelector('title');
+    if (title) title.textContent = t('app.title');
+    const picker = $('uiLanguage');
+    if (picker) picker.value = lang;
+  }
+
+  const languagePicker = $('uiLanguage');
+  if (languagePicker) {
+    languagePicker.value = settings.uiLanguage || 'de';
+    languagePicker.addEventListener('change', () => {
+      settings.uiLanguage = languagePicker.value;
+      localStorage.setItem(SET_KEY, JSON.stringify(settings));
+      fillTrainerLanguageSelect('foreignLanguage', settings.foreignLanguage || 'de');
+      fillTrainerLanguageSelect('nativeLanguage', settings.nativeLanguage || 'de');
+      renderCollectionPicker();
+      refresh();
+      applyLanguage();
+    });
+  }
   function renderCollectionPicker(){
     const toggle=$('collectionToggle'),menu=$('collectionMenu');
     if(!toggle||!menu||!activeCollection)return;
     toggle.textContent=activeCollection.name+' ▾';
     toggle.dataset.noTranslate='true';
-    toggle.title=localizedText('Liste wählen');
+    toggle.title=t('collection.choose');
     const edit=$('editCurrentCollection');
-    edit.title=localizedText('Liste umbenennen');edit.setAttribute('aria-label',localizedText('Liste umbenennen'));
+    edit.title=t('collection.rename');edit.setAttribute('aria-label',t('collection.rename'));
     menu.innerHTML='';
     collectionStore.lists.forEach(item=>{
       const row=document.createElement('div');row.className='collection-item'+(item.id===activeCollectionId?' current':'');
-      const choose=document.createElement('button');choose.type='button';choose.className='collection-name';choose.dataset.noTranslate='true';choose.textContent=item.name;choose.title=localizedText('Liste wählen');
+      const choose=document.createElement('button');choose.type='button';choose.className='collection-name';choose.dataset.noTranslate='true';choose.textContent=item.name;choose.title=t('collection.choose');
       choose.setAttribute('aria-current',item.id===activeCollectionId?'true':'false');
       choose.addEventListener('click',()=>{selectCollection(item.id);menu.hidden=true;toggle.setAttribute('aria-expanded','false');});
       row.appendChild(choose);
       if(item.id!==activeCollectionId){
-        const editButton=document.createElement('button');editButton.type='button';editButton.className='collection-action';editButton.textContent='✎';editButton.title=localizedText('Liste umbenennen');editButton.setAttribute('aria-label',localizedText('Liste umbenennen')+': '+item.name);
+        const editButton=document.createElement('button');editButton.type='button';editButton.className='collection-action';editButton.textContent='✎';editButton.title=t('collection.rename');editButton.setAttribute('aria-label',t('collection.rename')+': '+item.name);
         editButton.addEventListener('click',()=>renameCollection(item.id));row.appendChild(editButton);
-        const deleteButton=document.createElement('button');deleteButton.type='button';deleteButton.className='collection-action delete';deleteButton.textContent='🗑';deleteButton.title=localizedText('Liste löschen');deleteButton.setAttribute('aria-label',localizedText('Liste löschen')+': '+item.name);
+        const deleteButton=document.createElement('button');deleteButton.type='button';deleteButton.className='collection-action delete';deleteButton.textContent='🗑';deleteButton.title=t('collection.delete');deleteButton.setAttribute('aria-label',t('collection.delete')+': '+item.name);
         deleteButton.addEventListener('click',()=>deleteCollection(item.id));row.appendChild(deleteButton);
       }
       menu.appendChild(row);
     });
-    const addButton=document.createElement('button');addButton.type='button';addButton.className='collection-add';addButton.textContent='＋ '+localizedText('Neue Liste hinzufügen');addButton.addEventListener('click',()=>createCollection());menu.appendChild(addButton);
+    const addButton=document.createElement('button');addButton.type='button';addButton.className='collection-add';addButton.textContent='＋ '+t('collection.add');addButton.addEventListener('click',()=>createCollection());menu.appendChild(addButton);
   }
   function closeCollectionMenu(){const menu=$('collectionMenu'),toggle=$('collectionToggle');if(menu)menu.hidden=true;if(toggle)toggle.setAttribute('aria-expanded','false');}
   function selectCollection(id){
     const next=collectionStore.lists.find(x=>x.id===id);if(!next||next.id===activeCollectionId)return;
-    persistActiveCollection();
-    activeCollection=next;activeCollectionId=next.id;words=activeCollection.words;
-    restoreCollectionLanguages(activeCollection);
+    persistActiveCollection();activeCollection=next;activeCollectionId=next.id;words=activeCollection.words;persistActiveCollection();
     practiceWord=null;practicePos=0;testWord=null;testStage=0;testPos=0;
     buildPracticeOrder();
     buildTestOrder();
-    $('entryStatus').textContent='';$('practiceStatus').textContent='';$('testStatus').textContent='';$('listStatus').textContent='';$('settingsStatus').textContent='';
-    persistActiveCollection();
-    renderCollectionPicker();
-    refresh();
-    applyLanguage();
+    $('entryStatus').textContent='';$('practiceStatus').textContent='';$('testStatus').textContent='';$('listStatus').textContent='';
+    renderCollectionPicker();refresh();applyLanguage();
   }
   function validateCollectionName(value,oldName){
     const name=String(value||'').trim();
-    if(!name){alert(localizedText('Der Listenname darf nicht leer sein.'));return null;}
-    if(collectionStore.lists.some(x=>x.id!==oldName?.id&&x.name.toLocaleLowerCase()===name.toLocaleLowerCase())){alert(localizedText('Eine Liste mit diesem Namen existiert bereits.'));return null;}
+    if(!name){alert(t('collection.error_empty_name'));return null;}
+    if(collectionStore.lists.some(x=>x.id!==oldName?.id&&x.name.toLocaleLowerCase()===name.toLocaleLowerCase())){alert(t('collection.error_name_exists'));return null;}
     return name;
   }
   function createCollection(){
-    const value=prompt(localizedText('Name der neuen Liste eingeben:'));if(value===null)return;
+    const value=prompt(t('collection.prompt_add'));if(value===null)return;
     const name=validateCollectionName(value);if(name===null)return;
     persistActiveCollection();
-    const item={id:newCollectionId(),name,words:[],foreignLanguage:settings.foreignLanguage||'de',nativeLanguage:settings.nativeLanguage||'de'};collectionStore.lists.push(item);
+    const item={id:newCollectionId(),name,words:[]};collectionStore.lists.push(item);
     const oldId=activeCollectionId;activeCollection=item;activeCollectionId=item.id;words=item.words;
     practiceWord=null;practiceOrder=[];practicePos=0;testWord=null;testStage=0;testOrder=[];testPos=0;
-    $('entryStatus').textContent=localizedText('Liste erstellt.');
+    $('entryStatus').textContent=t('collection.created');
     save();closeCollectionMenu();
   }
   function renameCollection(id){
     const item=collectionStore.lists.find(x=>x.id===id);if(!item)return;
-    const value=prompt(localizedText('Neuen Namen für die Liste eingeben:'),item.name);if(value===null)return;
+    const value=prompt(t('collection.prompt_rename'),item.name);if(value===null)return;
     const name=validateCollectionName(value,item);if(name===null)return;
     item.name=name;if(item.id===activeCollectionId)activeCollection=item;
-    $('entryStatus').textContent=localizedText('Listenname geändert.');save();renderCollectionPicker();
+    $('entryStatus').textContent=t('collection.renamed');save();renderCollectionPicker();
   }
   function deleteCollection(id){
     const item=collectionStore.lists.find(x=>x.id===id);if(!item||item.id===activeCollectionId)return;
-    if(collectionStore.lists.length<=1){alert(localizedText('Mindestens eine Liste muss erhalten bleiben.'));return;}
-    if(!confirm(localizedText('Diese Liste und alle darin gespeicherten Vokabeln und Lernstände endgültig löschen?')+'\n\n'+item.name))return;
+    if(collectionStore.lists.length<=1){alert(t('collection.error_keep_one'));return;}
+    if(!confirm(t('collection.confirm_delete')+'\n\n'+item.name))return;
     collectionStore.lists=collectionStore.lists.filter(x=>x.id!==id);
-    $('listStatus').textContent=localizedText('Liste gelöscht.');save();renderCollectionPicker();
+    $('listStatus').textContent=t('collection.deleted');save();renderCollectionPicker();
   }
   $('collectionToggle').addEventListener('click',()=>{const menu=$('collectionMenu'),open=menu.hidden;menu.hidden=!open;$('collectionToggle').setAttribute('aria-expanded',String(open));});
   $('editCurrentCollection').addEventListener('click',()=>renameCollection(activeCollectionId));
   document.addEventListener('click',e=>{if(!$('collectionSwitcher').contains(e.target))closeCollectionMenu();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCollectionMenu();});
 
-  Object.assign(localePhrases, {"Fremdsprache":["Foreign language","Idioma extranjero","Иностранный язык","外语","外国語","Langue étrangère","Lingua straniera","Іноземна мова","اللغة الأجنبية","Yabancı dil","Język obcy"],"Muttersprache":["Native language","Lengua materna","Родной язык","母语","母語","Langue maternelle","Lingua madre","Рідна мова","اللغة الأم","Ana dili","Język ojczysty"],"Hinweis":["Pronunciation","Pronunciación","Произношение","发音","発音","Prononciation","Pronuncia","Вимова","النطق","Telaffuz","Wymowa"],"Gewusst":["Known","Correct","Знано","已知","わかった","Su","Conosciuta","Відомо","معروفة","Bilindi","Znane"],"Zeitstempel":["Timestamp","Marca de tiempo","Временная метка","时间戳","タイムスタンプ","Horodatage","Data e ora","Часова мітка","الطابع الزمني","Zaman damgası","Znacznik czasu"],"Zum Sortieren auf eine Spaltenüberschrift klicken.":["Click a column heading to sort.","Haz clic en un encabezado para ordenar.","Нажмите заголовок столбца для сортировки.","点击列标题进行排序。","列見出しをクリックして並べ替えます。","Cliquez sur un en-tête pour trier.","Fai clic su un'intestazione per ordinare.","Натисніть заголовок стовпця для сортування.","انقر عنوان العمود للفرز.","Sıralamak için sütun başlığına tıklayın.","Kliknij nagłówek kolumny, aby sortować."],"Oberflächensprache":["Interface language","Idioma de la interfaz","Язык интерфейса","界面语言","インターフェース言語","Langue de l’interface","Lingua dell’interfaccia","Мова інтерфейсу","لغة الواجهة","Arayüz dili","Język interfejsu"],"Der Lernfortschritt wird lokal in diesem Browser gespeichert.":["Learning progress is saved locally in this browser.","El progreso se guarda localmente en este navegador.","Прогресс сохраняется локально в этом браузере.","学习进度保存在此浏览器本地。","学習の進捗はこのブラウザーに保存されます。","La progression est enregistrée localement dans ce navigateur.","I progressi vengono salvati localmente in questo browser.","Прогрес зберігається локально в цьому браузері.","يُحفظ التقدم محليًا في هذا المتصفح.","Öğrenme ilerlemesi bu tarayıcıda yerel olarak kaydedilir.","Postępy są zapisywane lokalnie w tej przeglądarce."],"Lernrichtung spiegeln (Muttersprache → Fremdsprache)":["Reverse learning direction (native → foreign language)","Invertir dirección (lengua materna → extranjera)","Обратное направление (родной → иностранный)","反转学习方向（母语 → 外语）","学習方向を反転（母語 → 外国語）","Inverser le sens (langue maternelle → étrangère)","Inverti direzione (madrelingua → straniera)","Змінити напрямок (рідна → іноземна)","عكس اتجاه التعلم (اللغة الأم ← الأجنبية)","Öğrenme yönünü tersine çevir (ana dil → yabancı dil)","Odwróć kierunek (ojczysty → obcy)"],"Gesamten Lernfortschritt zurücksetzen":["Reset all learning progress","Restablecer todo el progreso","Сбросить весь прогресс","重置全部学习进度","すべての学習進捗をリセット","Réinitialiser toute la progression","Azzera tutti i progressi","Скинути весь прогрес","إعادة ضبط كل التقدم","Tüm öğrenme ilerlemesini sıfırla","Zresetuj wszystkie postępy"],"Alle Vokabeln löschen":["Delete all vocabulary","Eliminar todo el vocabulario","Удалить все слова","删除所有词汇","すべての単語を削除","Supprimer tout le vocabulaire","Elimina tutti i vocaboli","Видалити всі слова","حذف جميع المفردات","Tüm kelimeleri sil","Usuń wszystkie słówka"],"Keine fälligen Vokabeln übrig.":["No vocabulary due.","No quedan palabras pendientes.","Нет слов для повторения.","没有待复习词汇。","復習する単語はありません。","Aucun mot à réviser.","Nessun vocabolo da ripassare.","Немає слів для повторення.","لا توجد مفردات مستحقة.","Tekrar edilecek kelime kalmadı.","Brak słówek do powtórki."],"kein Hinweis":["no hint","sin pista","нет подсказки","无提示","ヒントなし","aucun indice","nessun suggerimento","немає підказки","لا يوجد تلميح","ipucu yok","brak podpowiedzi"],"Bitte Vokabel und Übersetzung ausfüllen.":["Please enter the vocabulary and translation.","Introduce la palabra y su traducción.","Введите слово и перевод.","请填写词汇和翻译。","単語と訳を入力してください。","Veuillez saisir le mot et sa traduction.","Inserisci il vocabolo e la traduzione.","Введіть слово та переклад.","يرجى إدخال المفردة وترجمتها.","Lütfen kelimeyi ve çevirisini girin.","Wpisz słówko i tłumaczenie."],"Vokabel eingetragen.":["Vocabulary added.","Palabra añadida.","Слово добавлено.","词汇已添加。","単語を追加しました。","Vocabulaire ajouté.","Vocabolo aggiunto.","Слово додано.","تمت إضافة المفردة.","Kelime eklendi.","Dodano słówko."],"Diese Vokabel wirklich löschen?":["Really delete this vocabulary item?","¿Eliminar esta palabra?","Действительно удалить это слово?","确定删除此词汇吗？","この単語を本当に削除しますか？","Supprimer vraiment ce vocabulaire ?","Eliminare davvero questo vocabolo?","Справді видалити це слово?","هل تريد حذف هذه المفردة؟","Bu kelime gerçekten silinsin mi?","Czy na pewno usunąć to słówko?"],"Vokabel löschen":["Delete vocabulary","Eliminar palabra","Удалить слово","删除词汇","単語を削除","Supprimer le vocabulaire","Elimina vocabolo","Видалити слово","حذف المفردة","Kelimeyi sil","Usuń słówko"],"fällig":["due","pendiente","пора повторить","到期","復習時期","à réviser","da ripassare","до повторення","مستحقة","tekrar zamanı","do powtórki"],"insgesamt":["total","en total","всего","总计","合計","au total","in totale","усього","الإجمالي","toplam","łącznie"],"noch nicht getestet":["not tested yet","sin probar","ещё не проверено","尚未测试","未テスト","pas encore testé","non ancora testato","ще не перевірено","لم يُختبر بعد","henüz test edilmedi","jeszcze nieprzetestowane"]});
 
-  Object.assign(localePhrases, {
-    "Spalte 3 – Hinweis (optional)": ["Column 3 – Hint (optional)","Columna 3 – Pista (opcional)","Столбец 3 — Подсказка (необязательно)","第3列—提示（可选）","列3・ヒント（任意）","Colonne 3 – Indice (facultatif)","Colonna 3 – Suggerimento (facoltativo)","Стовпець 3 — Підказка (необов’язково)","العمود 3 – تلميح (اختياري)","3. sütun – İpucu (isteğe bağlı)","Kolumna 3 – Podpowiedź (opcjonalnie)"],
-    "Index": ["Known","Conocido","Знаю","已知","わかった","Connu","Conosciuto","Відомо","معروف","Bilindi","Znane"],
-    "Duplikate löschen": ["Delete duplicates","Eliminar duplicados","Удалить дубликаты","删除重复项","重複を削除","Supprimer les doublons","Elimina duplicati","Видалити дублікати","حذف التكرارات","Yinelenenleri sil","Usuń duplikaty"],
-    "Duplikate gefunden. Wirklich löschen?": ["Duplicates found. Delete them?","Se encontraron duplicados. ¿Eliminar?","Найдены дубликаты. Удалить?","发现重复项。要删除吗？","重複が見つかりました。削除しますか？","Doublons trouvés. Supprimer ?","Duplicati trovati. Eliminare?","Знайдено дублікати. Видалити?","تم العثور على تكرارات. هل تريد حذفها؟","Yinelenenler bulundu. Silinsin mi?","Znaleziono duplikaty. Usunąć?"],
-    "Duplikate gelöscht.": ["Duplicates deleted.","Duplicados eliminados.","Дубликаты удалены.","重复项已删除。","重複を削除しました。","Doublons supprimés.","Duplicati eliminati.","Дублікати видалено.","تم حذف التكرارات.","Yinelenenler silindi.","Duplikaty usunięte."],
-    "Keine Duplikate gefunden.": ["No duplicates found.","No se encontraron duplicados.","Дубликаты не найдены.","未发现重复项。","重複はありません。","Aucun doublon trouvé.","Nessun duplicato trovato.","Дублікатів не знайдено.","لم يتم العثور على تكرارات.","Yinelenen bulunamadı.","Nie znaleziono duplikatów."],
-    "Bitte zuerst Text eingeben.": ["Please enter text first.","Introduce texto primero.","Сначала введите текст.","请先输入文本。","先にテキストを入力してください。","Veuillez saisir du texte.","Inserisci prima il testo.","Спочатку введіть текст.","يرجى إدخال النص أولاً.","Önce metin girin.","Najpierw wpisz tekst."],
-    "Übersetzung eingefügt.": ["Translation inserted.","Traducción insertada.","Перевод вставлен.","已插入翻译。","翻訳を挿入しました。","Traduction insérée.","Traduzione inserita.","Переклад вставлено.","تم إدراج الترجمة.","Çeviri eklendi.","Wstawiono tłumaczenie."],
-    "Übersetzung fehlgeschlagen. Internetverbindung prüfen.": ["Translation failed. Check your internet connection.","Falló la traducción. Comprueba tu conexión.","Перевод не удался. Проверьте интернет.","翻译失败。请检查网络连接。","翻訳に失敗しました。接続を確認してください。","Échec de la traduction. Vérifiez Internet.","Traduzione non riuscita. Controlla Internet.","Не вдалося перекласти. Перевірте інтернет.","فشلت الترجمة. تحقق من الاتصال بالإنترنت.","Çeviri başarısız. İnternet bağlantısını kontrol edin.","Tłumaczenie nie powiodło się. Sprawdź Internet."],
-    "Sprachausgabe wird nicht unterstützt.": ["Speech output is not supported.","La voz no es compatible.","Синтез речи не поддерживается.","不支持语音输出。","音声読み上げに対応していません。","La synthèse vocale n’est pas prise en charge.","La sintesi vocale non è supportata.","Мовлення не підтримується.","الإخراج الصوتي غير مدعوم.","Sesli okuma desteklenmiyor.","Synteza mowy nie jest obsługiwana."]
-  });
-  const greekPhrasesMore={"Spalte 3 – Hinweis (optional)":"Στήλη 3 – Υπόδειξη (προαιρετικά)","Index":"Γνωστό","Oberflächensprache":"Γλώσσα διεπαφής","Duplikate löschen":"Διαγραφή διπλοτύπων","Duplikate gefunden. Wirklich löschen?":"Βρέθηκαν διπλότυπα. Να διαγραφούν;","Duplikate gelöscht.":"Τα διπλότυπα διαγράφηκαν.","Keine Duplikate gefunden.":"Δεν βρέθηκαν διπλότυπα.","Bitte zuerst Text eingeben.":"Εισαγάγετε πρώτα κείμενο.","Übersetzung eingefügt.":"Η μετάφραση εισήχθη.","Übersetzung fehlgeschlagen. Internetverbindung prüfen.":"Η μετάφραση απέτυχε. Ελέγξτε τη σύνδεση στο διαδίκτυο.","Sprachausgabe wird nicht unterstützt.":"Η εκφώνηση δεν υποστηρίζεται."};
-  Object.assign(greekPhrases,greekPhrasesMore);
-
-  const originalTextNodes=new WeakMap();
-  Object.assign(localePhrases, {"fällig":["due","pendiente","к повторению","待复习","復習対象","à réviser","da ripassare","до повторення","مستحقة","tekrar zamanı","do powtórki"],"insgesamt":["total","en total","всего","总计","合計","au total","in totale","загалом","إجمالًا","toplam","łącznie"],"noch nicht getestet":["not tested yet","sin probar","ещё не проверено","尚未测试","未テスト","pas encore testé","non ancora testato","ще не перевірено","لم يُختبر بعد","henüz test edilmedi","jeszcze nieprzetestowane"],"Stunde":["hour","hora","час","小时","時間","heure","ora","година","ساعة","saat","godzina"],"Stunden":["hours","horas","часов","小时","時間","heures","ore","годин","ساعات","saat","godzin"],"Minute":["minute","minuto","минута","分钟","分","minute","minuto","хвилина","دقيقة","dakika","minuta"],"Minuten":["minutes","minutos","минут","分钟","分","minutes","minuti","хвилин","دقائق","dakika","minut"],"Tag":["day","día","день","天","日","jour","giorno","день","يوم","gün","dzień"],"Tage":["days","días","дней","天","日","jours","giorni","днів","أيام","gün","dni"],"Richtig – nächste Wiederholung in ":["Correct – next review in ","Correcto: próxima repetición en ","Верно — следующее повторение через ","正确——下次复习时间：","正解 — 次の復習まで ","Correct — prochaine révision dans ","Corretto — prossimo ripasso tra ","Правильно — наступне повторення через ","صحيح — المراجعة التالية خلال ","Doğru — sonraki tekrar ","Dobrze — następna powtórka za "],"Wird erneut geübt.":["Will be practiced again.","Se volverá a practicar.","Будет повторено ещё раз.","将再次练习。","もう一度練習します。","Sera révisé à nouveau.","Verrà ripassato di nuovo.","Буде повторено ще раз.","ستتم مراجعته مرة أخرى.","Yeniden çalışılacak.","Zostanie przećwiczone ponownie."],"Vokabeln importiert.":["vocabulary items imported.","palabras importadas.","слов импортировано.","个词汇已导入。","語をインポートしました。","mots importés.","vocaboli importati.","слів імпортовано.","مفردات مستوردة.","kelime içe aktarıldı.","słówek zaimportowano."],"Import fehlgeschlagen:":["Import failed:","Error de importación:","Ошибка импорта:","导入失败：","インポート失敗：","Échec de l’importation :","Importazione non riuscita:","Помилка імпорту:","فشل الاستيراد:","İçe aktarma başarısız:","Import nie powiódł się:"],"Import: Fremdsprache, Muttersprache, Hinweis, Gewusst (normal), Zeitstempel (normal), Gewusst (gespiegelt), Zeitstempel (gespiegelt). Auch ältere Exportdateien mit Zusatzspalten werden unterstützt.":["Import: foreign language, native language, hint, Known (normal), timestamp (normal), Known (mirrored), timestamp (mirrored). Older export files with extra columns are also supported.","Importación: idioma extranjero, idioma materno, pista, sabido (normal), marca de tiempo (normal), sabido (invertido), marca de tiempo (invertido). También se admiten archivos antiguos con columnas adicionales.","Импорт: иностранный язык, родной язык, подсказка, известно (обычный режим), временная метка (обычный режим), известно (зеркальный режим), временная метка (зеркальный режим). Поддерживаются старые файлы с дополнительными столбцами.","导入：外语、母语、提示、已知（普通）、时间戳（普通）、已知（镜像）、时间戳（镜像）。也支持带额外列的旧导出文件。","インポート：外国語、母語、ヒント、わかった（通常）、タイムスタンプ（通常）、わかった（反転）、タイムスタンプ（反転）。追加列のある古いエクスポートファイルにも対応します。","Importation : langue étrangère, langue maternelle, indice, connu (normal), horodatage (normal), connu (miroir), horodatage (miroir). Les anciens fichiers avec colonnes supplémentaires sont aussi pris en charge.","Importazione: lingua straniera, lingua madre, suggerimento, conosciuto (normale), data/ora (normale), conosciuto (speculare), data/ora (speculare). Sono supportati anche i vecchi file con colonne aggiuntive.","Імпорт: іноземна мова, рідна мова, підказка, відомо (звичайний режим), часова мітка (звичайний режим), відомо (дзеркальний режим), часова мітка (дзеркальний режим). Підтримуються старі файли з додатковими стовпцями.","الاستيراد: اللغة الأجنبية، اللغة الأم، التلميح، معروف (عادي)، الطابع الزمني (عادي)، معروف (معكوس)، الطابع الزمني (معكوس). كما تُدعم ملفات التصدير القديمة ذات الأعمدة الإضافية.","İçe aktarma: yabancı dil, ana dili, ipucu, bilindi (normal), zaman damgası (normal), bilindi (yansıtılmış), zaman damgası (yansıtılmış). Ek sütunları olan eski dışa aktarma dosyaları da desteklenir.","Import: język obcy, język ojczysty, podpowiedź, znane (normalnie), znacznik czasu (normalnie), znane (lustrzanie), znacznik czasu (lustrzanie). Obsługiwane są też starsze pliki z dodatkowymi kolumnami."]});
-  function applyLanguage() {
-    const lang=settings.uiLanguage||'de';
-    const index={de:-1,en:0,es:1,ru:2,zh:3,ja:4,fr:5,it:6,uk:7,ar:8,tr:9,pl:10,el:11}[lang]??-1;
-    document.documentElement.lang=lang;
-    document.documentElement.dir=lang==='ar'?'rtl':'ltr';
-    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-    let node;
-    while((node=walker.nextNode())) {
-      if(!node.parentElement || ['SCRIPT','STYLE','OPTION'].includes(node.parentElement.tagName) || node.parentElement.closest('[data-no-translate]')) continue;
-      if(!originalTextNodes.has(node)) originalTextNodes.set(node,node.nodeValue);
-      const original=originalTextNodes.get(node).trim();
-      const arrowMatch=original.match(/\s([↑↓])$/);
-      const base=arrowMatch?original.slice(0,-2).trimEnd():original;
-      const entry=localePhrases[base];
-      if(entry) {
-        const leading=node.nodeValue.match(/^\\s*/)?.[0]||'';
-        const trailing=node.nodeValue.match(/\\s*$/)?.[0]||'';
-        const translated=leading+(index<0?base:(entry[index]||base))+(arrowMatch?' '+arrowMatch[1]:'')+trailing;
-        if(node.nodeValue!==translated) node.nodeValue=translated;
-      }
-    }
-    const status=$('practiceStatus');
-    if(status && index>=0){
-      const raw=status.textContent||'';
-      if(raw==='Wird erneut geübt.'){
-        const t=localePhrases[raw]; if(t&&t[index])status.textContent=t[index];
-      } else {
-        const m=raw.match(/^Richtig – nächste Wiederholung in (.+)\\.$/);
-        if(m){
-          let duration=m[1];
-          for(const unit of ['Minuten','Minute','Stunden','Stunde','Tage','Tag']){
-            const t=localePhrases[unit];
-            if(t&&t[index])duration=duration.replace(new RegExp('\\\\b'+unit+'\\\\b','g'),t[index]);
-          }
-          const pre=localePhrases['Richtig – nächste Wiederholung in '];
-          status.textContent=(pre&&pre[index]?pre[index]:'Correct – next review in ')+duration+'.';
-        }
-      }
-    }
-    const entryStatus=$('entryStatus');
-    if(entryStatus && index>=0){
-      const raw=entryStatus.textContent||'';
-      const m=raw.match(/^(\\d+) Vokabeln importiert\\.$/);
-      if(m){
-        const t=localePhrases['Vokabeln importiert.'];
-        if(t&&t[index])entryStatus.textContent=m[1]+' '+t[index];
-      } else if(raw.startsWith('Import fehlgeschlagen:')){
-        const t=localePhrases['Import fehlgeschlagen:'];
-        if(t&&t[index])entryStatus.textContent=t[index]+raw.slice('Import fehlgeschlagen:'.length);
-      }
-    }
-    const languageLabel=localePhrases['Oberflächensprache'];
-    const langLabel=document.querySelector('label[for="uiLanguage"]');
-    const translatedLabel=index<0?'Oberflächensprache':(languageLabel[index]||'Oberflächensprache');
-    if(langLabel && langLabel.textContent!==translatedLabel) langLabel.textContent=translatedLabel;
-    const select=$('uiLanguage');
-    if(select) select.value=lang;
-  }
-  const languagePicker=$('uiLanguage');
-  if(languagePicker) {
-    languagePicker.value=settings.uiLanguage||'de';
-    languagePicker.addEventListener('change',()=>{
-      settings.uiLanguage=languagePicker.value;
-      localStorage.setItem(SET_KEY,JSON.stringify(settings));
-      fillTrainerLanguageSelect('foreignLanguage',settings.foreignLanguage||'de');fillTrainerLanguageSelect('nativeLanguage',settings.nativeLanguage||'de');
-      renderCollectionPicker();refresh();
-      applyLanguage();
-    });
-  }
-  const languageObserver=new MutationObserver(()=>applyLanguage());
-  languageObserver.observe(document.body,{subtree:true,childList:true,characterData:true});
 
   function activeTab(){
     return document.querySelector('#tabs button.active')?.dataset.tab||'entry'
@@ -888,17 +850,13 @@ th {
     renderList();
     const dueCount=words.filter(w=>ts(w)<=Date.now()).length;
     const pending=words.filter(w=>!w.tested).length;
-    const li={de:-1,en:0,es:1,ru:2,zh:3,ja:4,fr:5,it:6,uk:7,ar:8,tr:9,pl:10,el:11}[settings.uiLanguage||'de']??-1;
-    const dw=li<0?'fällig':(localePhrases['fällig'][li]||'fällig');
-    const tw=li<0?'insgesamt':(localePhrases['insgesamt'][li]||'insgesamt');
-    const pw=li<0?'noch nicht getestet':(localePhrases['noch nicht getestet'][li]||'noch nicht getestet');
-    $('practiceCount').textContent=`${dueCount} ${dw} · ${words.length} ${tw}`;
-    $('testCount').textContent=`${pending} ${pw}`
+    $('practiceCount').textContent=t('counter.practice',{due:dueCount,total:words.length});
+    $('testCount').textContent=t('counter.test',{count:pending})
   }
   function add(){
     let word=$('word').value.trim(),translation=$('translation').value.trim(),hint=$('pronunciation').value.trim();
     if(!word||!translation){
-      $('entryStatus').textContent='Bitte Vokabel und Übersetzung ausfüllen.';
+      $('entryStatus').textContent=t('entry.error_required');
       return
     }
     words.push(normalize({
@@ -910,7 +868,7 @@ th {
     testWord=null;
     buildTestOrder();
     $('word').value=$('translation').value=$('pronunciation').value='';
-    $('entryStatus').textContent='Vokabel eingetragen.';
+    $('entryStatus').textContent=t('entry.success');
     save()
   }
   $('addWord').onclick=add;
@@ -956,9 +914,9 @@ th {
   }
   function renderPractice(){
     let w=currentPractice();
-    $('practiceWord').textContent=w?shownWord(w):'Keine fälligen Vokabeln übrig.';
+    $('practiceWord').textContent=w?shownWord(w):t('practice.none_due');
     resetReveal('practice');
-    $('showPracticeHint').textContent=w&&w.hint?'Hinweis anzeigen':'kein Hinweis';
+    $('showPracticeHint').textContent=w&&w.hint?t('practice.show_hint'):t('practice.no_hint');
     $('showPracticeHint').classList.toggle('no-hint',!w||!w.hint);
     $('showPracticeHint').disabled=!w||!w.hint;
     $('showPracticeSolution').disabled=!w;
@@ -994,9 +952,9 @@ th {
     let hours=Math.floor(mins/60);
     mins%=60;
     let parts=[];
-    if(days>0)parts.push(days+' '+(days===1?'Tag':'Tage'));
-    if(hours>0)parts.push(hours+' '+(hours===1?'Stunde':'Stunden'));
-    if(mins>0)parts.push(mins+' '+(mins===1?'Minute':'Minuten'));
+    if(days>0)parts.push(days+' '+t(days===1?'time.day':'time.days'));
+    if(hours>0)parts.push(hours+' '+t(hours===1?'time.hour':'time.hours'));
+    if(mins>0)parts.push(mins+' '+t(mins===1?'time.minute':'time.minutes'));
     return parts.join(', ')
   }
   function gradePractice(known){
@@ -1006,14 +964,12 @@ th {
     if(known){
       const next=Math.min(idx(w)+1,100000),nextAt=Date.now()+BASE*Math.pow(2,next-1);
       setProgress(w,next,nextAt);
-      message=(settings.uiLanguage==='el'?'Σωστά — επόμενη επανάληψη σε ':'Richtig – nächste Wiederholung in ')+formatDuration(nextAt-Date.now());
-      if(settings.uiLanguage==='el') message=message.replace(/Minuten/g,'λεπτά').replace(/Minute/g,'λεπτό').replace(/Stunden/g,'ώρες').replace(/Stunde/g,'ώρα').replace(/Tage/g,'ημέρες').replace(/Tag/g,'ημέρα');
-      message+='.'
+      message=t('practice.feedback.correct',{duration:formatDuration(nextAt-Date.now())});
     }
     else{
       setProgress(w,0,Date.now());
       practiceOrder.push(w);
-      message='Wird erneut geübt.'
+      message=t('practice.feedback.retry')
     }
     practiceWord=null;
     resetReveal('practice');
@@ -1044,9 +1000,9 @@ th {
   }
   function renderTest(){
     let w=currentTest();
-    $('testWord').textContent=w?shownWord(w):'Keine Vokabeln zum Testen übrig.';
+    $('testWord').textContent=w?shownWord(w):t('test.none_remaining');
     resetReveal('test');
-    $('showTestHint').textContent=w&&w.hint?'Hinweis anzeigen':'kein Hinweis';
+    $('showTestHint').textContent=w&&w.hint?t('practice.show_hint'):t('practice.no_hint');
     $('showTestHint').classList.toggle('no-hint',!w||!w.hint);
     $('showTestHint').disabled=!w||!w.hint;
     $('showTestSolution').disabled=!w;
@@ -1084,7 +1040,7 @@ th {
     testWord=null;
     testStage=0;
     resetReveal('test');
-    $('testStatus').textContent=known?'Als gewusst markiert; Lernstand unverändert.':'Nicht gewusst: Index zurückgesetzt, jetzt wieder fällig.';
+    $('testStatus').textContent=known?t('test.known_unchanged'):t('test.unknown_reset');
     save()
   }
   $('testKnown').onclick=()=>markTest(true);
@@ -1095,7 +1051,7 @@ th {
     testStage=0;
     buildTestOrder();
     resetReveal('test');
-    $('testStatus').textContent='Test neu gestartet.';
+    $('testStatus').textContent=t('test.restarted');
     save()
   }
   ;
@@ -1123,16 +1079,16 @@ th {
     const headers=table.querySelectorAll('thead th');
     const headerDefs=[
       {label:'',key:null},
-      {label:'Fremdsprache',key:'word'},
-      {label:'Muttersprache',key:'answer'},
-      {label:'Hinweis',key:'hint'},
-      {label:'Gewusst',key:'index'},
-      {label:'Zeitstempel',key:'timestamp'}
+      {labelId:'language.foreign',key:'word'},
+      {labelId:'language.native',key:'answer'},
+      {labelId:'vocabulary.hint',key:'hint'},
+      {labelId:'list.known_count',key:'index'},
+      {labelId:'list.timestamp',key:'timestamp'}
     ];
     headers.forEach((th,i)=>{
       const def=headerDefs[i];
       if(!def)return;
-      th.textContent=def.label;
+      th.textContent=def.labelId?t(def.labelId):'';
       th.removeAttribute('data-sort');
       th.removeAttribute('aria-sort');
       th.removeAttribute('tabindex');
@@ -1141,7 +1097,7 @@ th {
         th.tabIndex=0;
         th.setAttribute('role','button');
         const active=settings.sort===def.key;
-        th.textContent=(def.label?localizedText(def.label):'')+(active?(settings.sortDesc?' ↓':' ↑'):'');
+        th.textContent=(def.labelId?t(def.labelId):'')+(active?(settings.sortDesc?' ↓':' ↑'):'');
         if(active)th.setAttribute('aria-sort',settings.sortDesc?'descending':'ascending');
         th.onclick=()=>sortByColumn(def.key);
         th.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sortByColumn(def.key)}};
@@ -1179,10 +1135,10 @@ th {
       deleteButton.type='button';
       deleteButton.className='delete-one';
       deleteButton.textContent='🗑';
-      deleteButton.title='Vokabel löschen';
-      deleteButton.setAttribute('aria-label','Vokabel löschen: '+shownWord(w));
+      deleteButton.title=t('list.delete_word');
+      deleteButton.setAttribute('aria-label',t('list.delete_word_aria',{word:shownWord(w)}));
       deleteButton.addEventListener('click',()=>{
-        if(!confirm('Diese Vokabel wirklich löschen?')) return;
+        if(!confirm(t('list.confirm_delete_word'))) return;
         words.splice(w._i,1);
         practiceWord=null;
         testWord=null;
@@ -1214,10 +1170,10 @@ th {
     const lang=settings.uiLanguage||'de';
     const msg=(de,el)=>lang==='el'?el:de;
     if(!duplicateGroups.length){
-      $('listStatus').textContent=msg('Keine Duplikate gefunden.','Δεν βρέθηκαν διπλότυπα.');
+      $('listStatus').textContent=t('list.no_duplicates');
       return;
     }
-    if(!confirm(msg('Duplikate gefunden. Wirklich löschen?','Βρέθηκαν διπλότυπα. Θέλετε πράγματι να διαγραφούν;')))return;
+    if(!confirm(t('list.confirm_delete_duplicates')))return;
     const remove=new Set();
     duplicateGroups.forEach(g=>{
       g.sort((a,b)=>{
@@ -1231,7 +1187,7 @@ th {
     const removed=remove.size;
     words=words.filter((w,i)=>!remove.has(i));
     practiceWord=null;testWord=null;buildPracticeOrder();buildTestOrder();save();
-    $('listStatus').textContent=msg(`${removed} Duplikat(e) gelöscht.`,`${removed} διπλότυπα διαγράφηκαν.`);
+    $('listStatus').textContent=t('list.duplicates_deleted_count',{count:removed});
   }
   $('deleteDuplicates').addEventListener('click',deleteDuplicateWords);
   function sortByColumn(key){
@@ -1278,7 +1234,7 @@ th {
     let f=e.target.files[0];
     if(!f)return;
     try{
-      if(!window.XLSX)throw new Error('Excel-Bibliothek nicht geladen. Bitte Internetverbindung prüfen.');
+      if(!window.XLSX)throw new Error('XLSX_LIBRARY');
       let buf=await f.arrayBuffer(),wb=XLSX.read(buf,{
         type:'array',cellDates:true
       }
@@ -1286,7 +1242,7 @@ th {
         header:1,defval:'',raw:true
       }
       );
-      if(!rows.length)throw new Error('Die Datei enthält keine Daten.');
+      if(!rows.length)throw new Error('EMPTY_FILE');
       const headers=rows[0].map(headerKey);
       const findHeader=patterns=>headers.findIndex(h=>patterns.some(p=>h.includes(p)));
       const wi=findHeader(['fremdsprache','japanisch','vokabel','word']),ti=findHeader(['muttersprache','deutsch','ubersetzung','translation']),hi=findHeader(['aussprache','romaji','hinweis']);
@@ -1309,23 +1265,23 @@ th {
         )
       }
       );
-      if(!imported.length)throw new Error('Keine Vokabelzeilen erkannt. Bitte Spalten 1 und 2 prüfen.');
+      if(!imported.length)throw new Error('NO_VOCAB_ROWS');
       words=words.concat(imported);
       practiceWord=null;
       buildPracticeOrder();
       testWord=null;
       buildTestOrder();
-      $('entryStatus').textContent=`${imported.length} Vokabeln importiert.`;
+      $('entryStatus').textContent=t('import.success',{count:imported.length});
       save()
     }
     catch(err){
-      $('entryStatus').textContent='Import fehlgeschlagen: '+err.message
+      $('entryStatus').textContent=t('import.error_prefix')+' '+t(({XLSX_LIBRARY:'import.error_library',EMPTY_FILE:'import.error_empty_file',NO_VOCAB_ROWS:'import.error_no_rows'}[err.message])||'import.error_generic',{details:err.message});
     }
     e.target.value=''
   }
   ;
   $('resetProgress').onclick=()=>{
-    if(!confirm('Wirklich den gesamten Lernfortschritt zurücksetzen?'))return;
+    if(!confirm(t('settings.confirm_reset_progress')))return;
     words.forEach(w=>{
       w.index=0;
       w.timestamp=Date.now();
@@ -1338,54 +1294,45 @@ th {
     buildPracticeOrder();
     testWord=null;
     buildTestOrder();
-    $('settingsStatus').textContent='Lernfortschritt zurückgesetzt.';
+    $('settingsStatus').textContent=t('settings.progress_reset');
     save()
   }
   ;
   $('deleteWords').onclick=()=>{
-    if(!confirm('Wirklich alle Vokabeln unwiderruflich löschen?'))return;
+    if(!confirm(t('settings.confirm_delete_all_words')))return;
     words=[];
     practiceWord=testWord=null;
     practiceOrder=[];
     practicePos=0;
     testOrder=[];
     testPos=0;
-    $('settingsStatus').textContent='Alle Vokabeln gelöscht.';
+    $('settingsStatus').textContent=t('settings.words_deleted');
     save()
   }
   ;
   const trainerLanguages=[
     ['de','🇩🇪 Deutsch'],['en','🇬🇧 English'],['es','🇪🇸 Español'],['ru','🇷🇺 Русский'],['zh','🇨🇳 中文'],['ja','🇯🇵 日本語'],['fr','🇫🇷 Français'],['it','🇮🇹 Italiano'],['uk','🇺🇦 Українська'],['ar','🇸🇦 العربية'],['tr','🇹🇷 Türkçe'],['pl','🇵🇱 Polski'],['el','🇬🇷 Ελληνικά']
   ];
-  const languageNamesByUI={
-    de:['Deutsch','Englisch','Spanisch','Russisch','Chinesisch','Japanisch','Französisch','Italienisch','Ukrainisch','Arabisch','Türkisch','Polnisch','Griechisch'],
-    en:['German','English','Spanish','Russian','Chinese','Japanese','French','Italian','Ukrainian','Arabic','Turkish','Polish','Greek'],
-    es:['Alemán','Inglés','Español','Ruso','Chino','Japonés','Francés','Italiano','Ucraniano','Árabe','Turco','Polaco','Griego'],
-    ru:['Немецкий','Английский','Испанский','Русский','Китайский','Японский','Французский','Итальянский','Украинский','Арабский','Турецкий','Польский','Греческий'],
-    zh:['德语','英语','西班牙语','俄语','中文','日语','法语','意大利语','乌克兰语','阿拉伯语','土耳其语','波兰语','希腊语'],
-    ja:['ドイツ語','英語','スペイン語','ロシア語','中国語','日本語','フランス語','イタリア語','ウクライナ語','アラビア語','トルコ語','ポーランド語','ギリシャ語'],
-    fr:['Allemand','Anglais','Espagnol','Russe','Chinois','Japonais','Français','Italien','Ukrainien','Arabe','Turc','Polonais','Grec'],
-    it:['Tedesco','Inglese','Spagnolo','Russo','Cinese','Giapponese','Francese','Italiano','Ucraino','Arabo','Turco','Polacco','Greco'],
-    uk:['Німецька','Англійська','Іспанська','Російська','Китайська','Японська','Французька','Італійська','Українська','Арабська','Турецька','Польська','Грецька'],
-    ar:['الألمانية','الإنجليزية','الإسبانية','الروسية','الصينية','اليابانية','الفرنسية','الإيطالية','الأوكرانية','العربية','التركية','البولندية','اليونانية'],
-    tr:['Almanca','İngilizce','İspanyolca','Rusça','Çince','Japonca','Fransızca','İtalyanca','Ukraynaca','Arapça','Türkçe','Lehçe','Yunanca'],
-    pl:['Niemiecki','Angielski','Hiszpański','Rosyjski','Chiński','Japoński','Francuski','Włoski','Ukraiński','Arabski','Turecki','Polski','Grecki'],
-    el:['Γερμανικά','Αγγλικά','Ισπανικά','Ρωσικά','Κινέζικα','Ιαπωνικά','Γαλλικά','Ιταλικά','Ουκρανικά','Αραβικά','Τουρκικά','Πολωνικά','Ελληνικά']
-  };
-  function fillTrainerLanguageSelect(id,defaultCode){const el=$(id);if(!el)return;const keep=el.value;el.innerHTML='';const names=languageNamesByUI[settings.uiLanguage||'de']||languageNamesByUI.de;trainerLanguages.forEach(([code,label],i)=>{const o=document.createElement('option');o.value=code;o.textContent=label.split(' ').slice(0,1).join(' ')+' '+(names[i]||label);el.appendChild(o)});el.value=trainerLanguages.some(x=>x[0]===keep)?keep:defaultCode;}
-  function languageFlag(code){const item=trainerLanguages.find(x=>x[0]===code);return item?item[1].split(' ')[0]:'🌐';}
-  function updateEntryLanguageFlags(){const foreign=$('foreignLanguageFlag'),native=$('nativeLanguageFlag');if(foreign)foreign.textContent=languageFlag(settings.foreignLanguage||'de');if(native)native.textContent=languageFlag(settings.nativeLanguage||'de');}
-  fillTrainerLanguageSelect('foreignLanguage','de');fillTrainerLanguageSelect('nativeLanguage','de');
+  function fillTrainerLanguageSelect(id,defaultCode){
+    const el=$(id);if(!el)return;
+    const keep=el.value||settings[id==='foreignLanguage'?'foreignLanguage':'nativeLanguage']||defaultCode;
+    el.innerHTML='';
+    trainerLanguages.forEach(([code,flag])=>{
+      const option=document.createElement('option');
+      option.value=code;
+      option.textContent=flag+' '+t('language.name.'+code);
+      el.appendChild(option);
+    });
+    el.value=trainerLanguages.some(x=>x[0]===keep)?keep:defaultCode;
+  }
   const foreignPicker=$('foreignLanguage'),nativePicker=$('nativeLanguage');
-  if(foreignPicker)foreignPicker.value=settings.foreignLanguage||'de';
-  if(nativePicker)nativePicker.value=settings.nativeLanguage||'de';
-  [foreignPicker,nativePicker].forEach(el=>el&&el.addEventListener('change',()=>{settings.foreignLanguage=foreignPicker.value;settings.nativeLanguage=nativePicker.value;activeCollection.foreignLanguage=settings.foreignLanguage;activeCollection.nativeLanguage=settings.nativeLanguage;saveSettings();persistActiveCollection();updateEntryLanguageFlags();}));
-  async function translateEntry(from,to){const src=$(from),dst=$(to),text=src.value.trim();if(!text){$('entryStatus').textContent='Bitte zuerst Text eingeben.';return;}const button=from==='translation' ? $('translateWord') : $('translateTranslation');button.disabled=true;try{const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+encodeURIComponent(from==='translation'?(settings.nativeLanguage||'de'):(settings.foreignLanguage||'de'))+'&tl='+encodeURIComponent(from==='translation'?(settings.foreignLanguage||'de'):(settings.nativeLanguage||'de'))+'&dt=t&q='+encodeURIComponent(text);const response=await fetch(url);if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();const translated=(data[0]||[]).map(x=>x&&x[0]||'').join('');if(!translated)throw new Error('Keine Übersetzung');dst.value=translated;$('entryStatus').textContent='Übersetzung eingefügt.';}catch(e){$('entryStatus').textContent='Übersetzung fehlgeschlagen. Internetverbindung prüfen.';}finally{button.disabled=false;}}
+  [foreignPicker,nativePicker].forEach(el=>el&&el.addEventListener('change',()=>{settings.foreignLanguage=foreignPicker.value;settings.nativeLanguage=nativePicker.value;saveSettings();}));
+  async function translateEntry(from,to){const src=$(from),dst=$(to),text=src.value.trim();if(!text){$('entryStatus').textContent=t('translate.error_empty');return;}const button=from==='translation' ? $('translateWord') : $('translateTranslation');button.disabled=true;try{const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+encodeURIComponent(from==='translation'?(settings.nativeLanguage||'de'):(settings.foreignLanguage||'de'))+'&tl='+encodeURIComponent(from==='translation'?(settings.foreignLanguage||'de'):(settings.nativeLanguage||'de'))+'&dt=t&q='+encodeURIComponent(text);const response=await fetch(url);if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();const translated=(data[0]||[]).map(x=>x&&x[0]||'').join('');if(!translated)throw new Error('NO_TRANSLATION');dst.value=translated;$('entryStatus').textContent=t('translate.success');}catch(e){$('entryStatus').textContent=t(e.message==='NO_TRANSLATION'?'translate.error_no_result':'translate.error_network');}finally{button.disabled=false;}}
   $('translateWord').addEventListener('click',()=>translateEntry('translation','word'));$('translateTranslation').addEventListener('click',()=>translateEntry('word','translation'));
   $('speakEntryWord').addEventListener('click',()=>speakTrainer($('word').value,settings.foreignLanguage||'de'));$('speakEntryTranslation').addEventListener('click',()=>speakTrainer($('translation').value,settings.nativeLanguage||'de'));
   function speakTrainer(text,code){
     text=String(text||'').trim();if(!text)return;
-    if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){alert(localePhrases['Sprachausgabe wird nicht unterstützt.']?.[{de:-1,en:0,es:1,ru:2,zh:3,ja:4,fr:5,it:6,uk:7,ar:8,tr:9,pl:10,el:11}[settings.uiLanguage]??0]||'Sprachausgabe wird nicht unterstützt.');return;}
+    if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){alert(t('speech.error_unsupported'));return;}
     const synth=window.speechSynthesis; synth.cancel();
     const aliases={zh:'zh-CN',ja:'ja-JP',ar:'ar-SA',uk:'uk-UA',el:'el-GR',tr:'tr-TR',pl:'pl-PL',ru:'ru-RU',de:'de-DE',en:'en-US',es:'es-ES',fr:'fr-FR',it:'it-IT'};
     const requested=String(code||'de').toLowerCase().replace('_','-'),base=requested.split('-')[0],utterance=new SpeechSynthesisUtterance(text);utterance.lang=aliases[requested]||requested;
@@ -1401,36 +1348,43 @@ th {
   $('speakTestWord').addEventListener('click',()=>speakTrainer($('testWord').textContent,settings.mirrorDirection?(settings.nativeLanguage||'de'):(settings.foreignLanguage||'de')));
   $('speakTestSolution').addEventListener('click',()=>speakTrainer($('testSolution').textContent,settings.mirrorDirection?(settings.foreignLanguage||'de'):(settings.nativeLanguage||'de')));
   function init(){
-    // Die zuletzt ausgewählte Lernliste ist die Quelle für ihr individuelles Sprachpaar.
-    restoreCollectionLanguages(activeCollection);
-    persistActiveCollection();
+    fillTrainerLanguageSelect('foreignLanguage','de');
+    fillTrainerLanguageSelect('nativeLanguage','de');
+    if(foreignPicker)foreignPicker.value=settings.foreignLanguage||'de';
+    if(nativePicker)nativePicker.value=settings.nativeLanguage||'de';
     $('randomPractice').checked=!!settings.randomPractice;
     $('randomTest').checked=!!settings.randomTest;
     $('mirrorDirection').checked=!!settings.mirrorDirection;
     const picker=$('uiLanguage'); if(picker) picker.value=settings.uiLanguage||'de';
-    updateEntryLanguageFlags();
     buildPracticeOrder();
     buildTestOrder();
     renderCollectionPicker();
     refresh();
     applyLanguage();
   }
-  init();
+  window.addEventListener('vocab-ui-texts-ready',()=>{
+    window.vocabT=t;
+    init();
+  },{once:true});
 }
 )();
+
 
 </script>
   
 <script>
+
 (()=>{if(!('serviceWorker'in navigator)||!(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1'))return;
 const area=document.getElementById('pwaUpdateArea'),msg=document.getElementById('pwaUpdateMessage'),btn=document.getElementById('pwaUpdateButton'),later=document.getElementById('pwaUpdateLater');let reg=null,reload=false;
 const show=()=>area.classList.add('show');later.addEventListener('click',()=>area.classList.remove('show'));
-window.addEventListener('load',async()=>{try{reg=await navigator.serviceWorker.register('./sw.js');reg.update().catch(()=>{});if(reg.waiting)show();reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller){msg.textContent='Eine neue Version ist verfügbar.';show();}});});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reload)location.reload();});}catch(e){console.warn('Service Worker:',e);}});
-btn.addEventListener('click',()=>{if(!reg)return;if(reg.waiting){reload=true;reg.waiting.postMessage({type:'SKIP_WAITING'});btn.disabled=true;btn.textContent='Aktualisiere…';}else{reg.update().catch(()=>{});msg.textContent='Update wird geprüft. Bitte Seite kurz neu laden.';}});
+window.addEventListener('load',async()=>{try{reg=await navigator.serviceWorker.register('./sw.js');reg.update().catch(()=>{});if(reg.waiting)show();reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller){msg.textContent=window.vocabT?window.vocabT('pwa.update_available'):'Eine neue Version ist verfügbar.';show();}});});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reload)location.reload();});}catch(e){console.warn('Service Worker:',e);}});
+btn.addEventListener('click',()=>{if(!reg)return;if(reg.waiting){reload=true;reg.waiting.postMessage({type:'SKIP_WAITING'});btn.disabled=true;btn.textContent=window.vocabT?window.vocabT('pwa.updating'):'Aktualisiere…';}else{reg.update().catch(()=>{});msg.textContent=window.vocabT?window.vocabT('pwa.checking_update'):'Update wird geprüft. Bitte Seite kurz neu laden.';}});
 })();
+
 </script>
 
 <script>
+
   let deferredInstallPrompt = null;
 
   const installButton = document.getElementById("installAppBtn");
@@ -1448,11 +1402,7 @@ btn.addEventListener('click',()=>{if(!reg)return;if(reg.waiting){reload=true;reg
   // Button anklicken
   installButton.addEventListener("click", async () => {
       if (!deferredInstallPrompt) {
-          alert(
-              "Bitte öffne den Vokabeltrainer in Chrome und " +
-              "wähle im Menü 'App installieren' oder " +
-              "'Zum Startbildschirm hinzufügen'."
-          );
+          alert(window.vocabT ? window.vocabT('pwa.install_help') : "Bitte öffne den Vokabeltrainer in Chrome und wähle im Menü 'App installieren' oder 'Zum Startbildschirm hinzufügen'.");
           return;
       }
 
@@ -1472,6 +1422,2015 @@ btn.addEventListener('click',()=>{if(!reg)return;if(reg.waiting){reload=true;reg
       installButton.style.display = "none";
       deferredInstallPrompt = null;
   });
+
+</script>
+
+
+<script>
+/*
+ * Zentrale UI-Textbibliothek. Deutsch ist die verbindliche Referenzsprache.
+ * Alle UI-Texte werden unter stabilen, semantischen IDs in UI_TEXTS.de gesammelt.
+ * Andere Sprachen enthalten nur bereits vorhandene Übersetzungen; fehlende Werte fallen auf Deutsch zurück.
+ * Neue UI-Texte: UI_TEXTS.de["bereich.kennung"] ergänzen und im Code t("bereich.kennung") verwenden.
+ * UI_TEXT_IDS ist eine Übergangskarte für vorhandene deutsche HTML-Texte und ältere localizedText-Aufrufe.
+ */
+/*
+ * ZENTRALE UI-TEXTBIBLIOTHEK (i18n)
+ *
+ * Deutsch (de) ist die verbindliche Referenzsprache.
+ * Jede Oberfläche bekommt eine stabile, semantische Kennung.
+ * Neue UI-Texte werden ausschließlich hier unter UI_TEXTS.de ergänzt.
+ * Bestehende Sprachen dürfen unvollständig sein; t() fällt dann auf Deutsch zurück.
+ * Neue Anwendungslogik soll direkt t("bereich.kennung") verwenden.
+ */
+const UI_TEXTS = {
+  "de": {
+    "answer.known": "Gewusst",
+    "answer.unknown": "Nicht gewusst",
+    "app.collection_picker": "Lernliste auswählen",
+    "app.title": "Vokabeltrainer",
+    "button.speak": "🔊 Vorlesen",
+    "button.speak_solution": "🔊 Lösung vorlesen",
+    "button.translate_from_foreign": "Übersetzen aus Fremdsprache",
+    "button.translate_from_native": "Übersetzen aus Muttersprache",
+    "collection.add": "Neue Liste hinzufügen",
+    "collection.choose": "Liste wählen",
+    "collection.confirm_delete": "Diese Liste und alle darin gespeicherten Vokabeln und Lernstände endgültig löschen?",
+    "collection.created": "Liste erstellt.",
+    "collection.delete": "Liste löschen",
+    "collection.deleted": "Liste gelöscht.",
+    "collection.error_empty_name": "Der Listenname darf nicht leer sein.",
+    "collection.error_keep_one": "Mindestens eine Liste muss erhalten bleiben.",
+    "collection.error_name_exists": "Eine Liste mit diesem Namen existiert bereits.",
+    "collection.prompt_add": "Name der neuen Liste eingeben:",
+    "collection.prompt_rename": "Neuen Namen für die Liste eingeben:",
+    "collection.rename": "Liste umbenennen",
+    "collection.renamed": "Listenname geändert.",
+    "counter.due": "fällig",
+    "counter.not_tested": "noch nicht getestet",
+    "counter.practice": "{due} fällig · {total} insgesamt",
+    "counter.test": "{count} noch nicht getestet",
+    "counter.total": "insgesamt",
+    "entry.error_required": "Bitte Vokabel und Übersetzung ausfüllen.",
+    "entry.export_excel": "Excel exportieren",
+    "entry.foreign_label": "Spalte 1 – Fremdsprache",
+    "entry.heading": "Vokabel eintragen",
+    "entry.hint_label": "Spalte 3 – Hinweis (optional)",
+    "entry.import_excel": "Excel importieren",
+    "entry.import_help": "Import: Fremdsprache, Muttersprache, Hinweis, Gewusst (normal), Zeitstempel (normal), Gewusst (gespiegelt), Zeitstempel (gespiegelt). Auch ältere Exportdateien mit Zusatzspalten werden unterstützt.",
+    "entry.native_label": "Spalte 2 – Muttersprache",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "Apfel",
+    "entry.speak": "Vorlesen",
+    "entry.success": "Vokabel eingetragen.",
+    "import.error_empty_file": "Die Datei enthält keine Daten.",
+    "import.error_generic": "Import fehlgeschlagen: {details}",
+    "import.error_library": "Excel-Bibliothek nicht geladen. Bitte Internetverbindung prüfen.",
+    "import.error_no_rows": "Keine Vokabelzeilen erkannt. Bitte Spalten 1 und 2 prüfen.",
+    "import.error_prefix": "Import fehlgeschlagen:",
+    "import.success": "{count} Vokabeln importiert.",
+    "import.success_suffix": "Vokabeln importiert.",
+    "language.foreign": "Fremdsprache",
+    "language.name.ar": "Arabisch",
+    "language.name.de": "Deutsch",
+    "language.name.el": "Griechisch",
+    "language.name.en": "Englisch",
+    "language.name.es": "Spanisch",
+    "language.name.fr": "Französisch",
+    "language.name.it": "Italienisch",
+    "language.name.ja": "Japanisch",
+    "language.name.pl": "Polnisch",
+    "language.name.ru": "Russisch",
+    "language.name.tr": "Türkisch",
+    "language.name.uk": "Ukrainisch",
+    "language.name.zh": "Chinesisch",
+    "language.native": "Muttersprache",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "Duplikate gefunden. Wirklich löschen?",
+    "list.confirm_delete_word": "Diese Vokabel wirklich löschen?",
+    "list.delete_duplicates": "Duplikate löschen",
+    "list.delete_word": "Vokabel löschen",
+    "list.delete_word_aria": "Vokabel löschen: {word}",
+    "list.duplicates_deleted": "Duplikate gelöscht.",
+    "list.duplicates_deleted_count": "{count} Duplikat(e) gelöscht.",
+    "list.heading": "Vokabelliste",
+    "list.known_count": "Gewusst",
+    "list.no_duplicates": "Keine Duplikate gefunden.",
+    "list.sort_alphabetical": "Alphabetisch",
+    "list.sort_chronological": "Chronologisch",
+    "list.sort_help": "Zum Sortieren auf eine Spaltenüberschrift klicken.",
+    "list.timestamp": "Zeitstempel",
+    "practice.correct_prefix": "Richtig – nächste Wiederholung in ",
+    "practice.feedback.correct": "Richtig – nächste Wiederholung in {duration}.",
+    "practice.feedback.retry": "Wird erneut geübt.",
+    "practice.no_hint": "kein Hinweis",
+    "practice.none_due": "Keine fälligen Vokabeln übrig.",
+    "practice.none_due_initial": "Noch keine fälligen Vokabeln",
+    "practice.random_due": "Zufällige Reihenfolge aller fälligen Vokabeln",
+    "practice.retry": "Wird erneut geübt.",
+    "practice.show_hint": "Hinweis anzeigen",
+    "practice.show_solution": "Lösung anzeigen",
+    "pwa.checking_update": "Update wird geprüft. Bitte Seite kurz neu laden.",
+    "pwa.install_button": "📲 App installieren",
+    "pwa.install_help": "Bitte öffne den Vokabeltrainer in Chrome und wähle im Menü App installieren oder Zum Startbildschirm hinzufügen.",
+    "pwa.update_available": "Eine neue Version ist verfügbar.",
+    "pwa.update_later": "Später",
+    "pwa.update_now": "Jetzt aktualisieren",
+    "pwa.updating": "Aktualisiere…",
+    "settings.confirm_delete_all_words": "Wirklich alle Vokabeln unwiderruflich löschen?",
+    "settings.confirm_reset_progress": "Wirklich den gesamten Lernfortschritt zurücksetzen?",
+    "settings.delete_all_words": "Alle Vokabeln löschen",
+    "settings.interface_language": "Oberflächensprache",
+    "settings.local_storage_note": "Der Lernfortschritt wird lokal in diesem Browser gespeichert.",
+    "settings.progress_reset": "Lernfortschritt zurückgesetzt.",
+    "settings.reset_progress": "Gesamten Lernfortschritt zurücksetzen",
+    "settings.reverse_direction": "Lernrichtung spiegeln (Muttersprache → Fremdsprache)",
+    "settings.words_deleted": "Alle Vokabeln gelöscht.",
+    "speech.error_unsupported": "Sprachausgabe wird nicht unterstützt.",
+    "storage.error_save": "Speichern fehlgeschlagen",
+    "tab.entry": "Eintragen",
+    "tab.list": "Liste",
+    "tab.practice": "Üben",
+    "tab.settings": "Einstellungen",
+    "tab.test": "Testen",
+    "test.known_unchanged": "Als gewusst markiert; Lernstand unverändert.",
+    "test.none_initial": "Keine Vokabeln zum Testen.",
+    "test.none_remaining": "Keine Vokabeln zum Testen übrig.",
+    "test.random_order": "Zufällige Reihenfolge",
+    "test.restart": "Test neu starten",
+    "test.restarted": "Test neu gestartet.",
+    "test.unknown_reset": "Nicht gewusst: Gewusst zurückgesetzt, jetzt wieder fällig.",
+    "time.day": "Tag",
+    "time.days": "Tage",
+    "time.hour": "Stunde",
+    "time.hours": "Stunden",
+    "time.minute": "Minute",
+    "time.minutes": "Minuten",
+    "translate.error_empty": "Bitte zuerst Text eingeben.",
+    "translate.error_network": "Übersetzung fehlgeschlagen. Internetverbindung prüfen.",
+    "translate.error_no_result": "Keine Übersetzung",
+    "translate.success": "Übersetzung eingefügt.",
+    "vocabulary.hint": "Hinweis"
+  },
+  "en": {
+    "answer.known": "Known",
+    "answer.unknown": "Not known",
+    "app.collection_picker": "Choose learning list",
+    "app.title": "Vocabulary Trainer",
+    "button.speak": "🔊 Speak",
+    "button.speak_solution": "🔊 Read answer aloud",
+    "button.translate_from_foreign": "Translate from foreign language",
+    "button.translate_from_native": "Translate from native language",
+    "collection.add": "Add new list",
+    "collection.choose": "Choose list",
+    "collection.confirm_delete": "Permanently delete this list and all vocabulary and learning progress stored in it?",
+    "collection.created": "List created.",
+    "collection.delete": "Delete list",
+    "collection.deleted": "List deleted.",
+    "collection.error_empty_name": "The list name cannot be empty.",
+    "collection.error_keep_one": "At least one list must remain.",
+    "collection.error_name_exists": "A list with this name already exists.",
+    "collection.prompt_add": "Enter the new list name:",
+    "collection.prompt_rename": "Enter a new name for the list:",
+    "collection.rename": "Rename list",
+    "collection.renamed": "List renamed.",
+    "counter.due": "due",
+    "counter.not_tested": "not tested yet",
+    "counter.practice": "{due} due · {total} total",
+    "counter.test": "{count} not tested yet",
+    "counter.total": "total",
+    "entry.error_required": "Please enter the vocabulary and translation.",
+    "entry.export_excel": "Export Excel",
+    "entry.foreign_label": "Column 1 – Foreign language",
+    "entry.heading": "Add vocabulary",
+    "entry.hint_label": "Column 3 – Hint (optional)",
+    "entry.import_excel": "Import Excel",
+    "entry.import_help": "Import: foreign language, native language, hint, Known (normal), timestamp (normal), Known (mirrored), timestamp (mirrored). Older export files with extra columns are also supported.",
+    "entry.native_label": "Column 2 – Native language",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "Apfel",
+    "entry.speak": "Speak",
+    "entry.success": "Vocabulary added.",
+    "import.error_empty_file": "The file contains no data.",
+    "import.error_generic": "Import failed: {details}",
+    "import.error_library": "Excel library not loaded. Check your internet connection.",
+    "import.error_no_rows": "No vocabulary rows detected. Check columns 1 and 2.",
+    "import.error_prefix": "Import failed:",
+    "import.success": "{count} vocabulary items imported.",
+    "import.success_suffix": "vocabulary items imported.",
+    "language.foreign": "Foreign language",
+    "language.name.ar": "Arabic",
+    "language.name.de": "German",
+    "language.name.el": "Greek",
+    "language.name.en": "English",
+    "language.name.es": "Spanish",
+    "language.name.fr": "French",
+    "language.name.it": "Italian",
+    "language.name.ja": "Japanese",
+    "language.name.pl": "Polish",
+    "language.name.ru": "Russian",
+    "language.name.tr": "Turkish",
+    "language.name.uk": "Ukrainian",
+    "language.name.zh": "Chinese",
+    "language.native": "Native language",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "Duplicates found. Delete them?",
+    "list.confirm_delete_word": "Really delete this vocabulary item?",
+    "list.delete_duplicates": "Delete duplicates",
+    "list.delete_word": "Delete vocabulary",
+    "list.delete_word_aria": "Delete vocabulary: {word}",
+    "list.duplicates_deleted": "Duplicates deleted.",
+    "list.duplicates_deleted_count": "{count} duplicate(s) deleted.",
+    "list.heading": "Vocabulary list",
+    "list.known_count": "Known",
+    "list.no_duplicates": "No duplicates found.",
+    "list.sort_alphabetical": "Alphabetical",
+    "list.sort_chronological": "Chronological",
+    "list.sort_help": "Click a column heading to sort.",
+    "list.timestamp": "Timestamp",
+    "practice.correct_prefix": "Correct – next review in ",
+    "practice.feedback.correct": "Correct – next review in {duration}.",
+    "practice.feedback.retry": "Will be practiced again.",
+    "practice.no_hint": "no hint",
+    "practice.none_due": "No vocabulary due.",
+    "practice.none_due_initial": "No vocabulary due yet",
+    "practice.random_due": "Random order for all due words",
+    "practice.retry": "Will be practiced again.",
+    "practice.show_hint": "Show hint",
+    "practice.show_solution": "Show answer",
+    "pwa.checking_update": "Checking for update. Please reload the page shortly.",
+    "pwa.install_button": "📲 Install app",
+    "pwa.install_help": "Open the vocabulary trainer in Chrome and choose Install app or Add to Home screen from the menu.",
+    "pwa.update_available": "A new version is available.",
+    "pwa.update_later": "Later",
+    "pwa.update_now": "Update now",
+    "pwa.updating": "Updating…",
+    "settings.confirm_delete_all_words": "Really delete all vocabulary permanently?",
+    "settings.confirm_reset_progress": "Really reset all learning progress?",
+    "settings.delete_all_words": "Delete all vocabulary",
+    "settings.interface_language": "Interface language",
+    "settings.local_storage_note": "Learning progress is saved locally in this browser.",
+    "settings.progress_reset": "Learning progress reset.",
+    "settings.reset_progress": "Reset all learning progress",
+    "settings.reverse_direction": "Reverse learning direction (native → foreign language)",
+    "settings.words_deleted": "All vocabulary deleted.",
+    "speech.error_unsupported": "Speech output is not supported.",
+    "storage.error_save": "Saving failed",
+    "tab.entry": "Add",
+    "tab.list": "List",
+    "tab.practice": "Practice",
+    "tab.settings": "Settings",
+    "tab.test": "Test",
+    "test.known_unchanged": "Marked as known; progress unchanged.",
+    "test.none_initial": "No vocabulary to test.",
+    "test.none_remaining": "No vocabulary left to test.",
+    "test.random_order": "Random order",
+    "test.restart": "Restart test",
+    "test.restarted": "Test restarted.",
+    "test.unknown_reset": "Not known: progress reset; due again now.",
+    "time.day": "day",
+    "time.days": "days",
+    "time.hour": "hour",
+    "time.hours": "hours",
+    "time.minute": "minute",
+    "time.minutes": "minutes",
+    "translate.error_empty": "Please enter text first.",
+    "translate.error_network": "Translation failed. Check your internet connection.",
+    "translate.error_no_result": "No translation",
+    "translate.success": "Translation inserted.",
+    "vocabulary.hint": "Hint"
+  },
+  "es": {
+    "answer.known": "Correct",
+    "answer.unknown": "No la sabía",
+    "app.collection_picker": "Elegir lista de aprendizaje",
+    "app.title": "Entrenador de vocabulario",
+    "button.speak": "🔊 Reproducir voz",
+    "button.speak_solution": "🔊 Leer respuesta",
+    "button.translate_from_foreign": "Traducir desde el idioma extranjero",
+    "button.translate_from_native": "Traducir desde el idioma materno",
+    "collection.add": "Añadir nueva lista",
+    "collection.choose": "Elegir lista",
+    "collection.confirm_delete": "¿Eliminar definitivamente esta lista y todo el vocabulario y progreso guardados en ella?",
+    "collection.created": "Lista creada.",
+    "collection.delete": "Eliminar lista",
+    "collection.deleted": "Lista eliminada.",
+    "collection.error_empty_name": "El nombre de la lista no puede estar vacío.",
+    "collection.error_keep_one": "Debe quedar al menos una lista.",
+    "collection.error_name_exists": "Ya existe una lista con este nombre.",
+    "collection.prompt_add": "Introduce el nombre de la nueva lista:",
+    "collection.prompt_rename": "Introduce un nuevo nombre para la lista:",
+    "collection.rename": "Renombrar lista",
+    "collection.renamed": "Nombre de la lista cambiado.",
+    "counter.due": "pendiente",
+    "counter.not_tested": "sin probar",
+    "counter.practice": "{due} pendientes · {total} en total",
+    "counter.test": "{count} sin probar",
+    "counter.total": "en total",
+    "entry.error_required": "Introduce la palabra y su traducción.",
+    "entry.export_excel": "Exportar Excel",
+    "entry.foreign_label": "Columna 1 – Idioma extranjero",
+    "entry.heading": "Añadir vocabulario",
+    "entry.hint_label": "Columna 3 – Pista (opcional)",
+    "entry.import_excel": "Importar Excel",
+    "entry.import_help": "Importación: idioma extranjero, idioma materno, pista, sabido (normal), marca de tiempo (normal), sabido (invertido), marca de tiempo (invertido). También se admiten archivos antiguos con columnas adicionales.",
+    "entry.native_label": "Columna 2 – Lengua materna",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "manzana",
+    "entry.speak": "Reproducir voz",
+    "entry.success": "Palabra añadida.",
+    "import.error_empty_file": "El archivo no contiene datos.",
+    "import.error_generic": "Error de importación: {details}",
+    "import.error_library": "La biblioteca de Excel no está cargada. Comprueba Internet.",
+    "import.error_no_rows": "No se detectaron vocablos. Comprueba las columnas 1 y 2.",
+    "import.error_prefix": "Error de importación:",
+    "import.success": "Se importaron {count} vocablos.",
+    "import.success_suffix": "palabras importadas.",
+    "language.foreign": "Idioma extranjero",
+    "language.name.ar": "Árabe",
+    "language.name.de": "Alemán",
+    "language.name.el": "Griego",
+    "language.name.en": "Inglés",
+    "language.name.es": "Español",
+    "language.name.fr": "Francés",
+    "language.name.it": "Italiano",
+    "language.name.ja": "Japonés",
+    "language.name.pl": "Polaco",
+    "language.name.ru": "Ruso",
+    "language.name.tr": "Turco",
+    "language.name.uk": "Ucraniano",
+    "language.name.zh": "Chino",
+    "language.native": "Lengua materna",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "Se encontraron duplicados. ¿Eliminar?",
+    "list.confirm_delete_word": "¿Eliminar esta palabra?",
+    "list.delete_duplicates": "Eliminar duplicados",
+    "list.delete_word": "Eliminar palabra",
+    "list.delete_word_aria": "Eliminar vocabulario: {word}",
+    "list.duplicates_deleted": "Duplicados eliminados.",
+    "list.duplicates_deleted_count": "Se eliminaron {count} duplicado(s).",
+    "list.heading": "Lista de vocabulario",
+    "list.known_count": "Conocido",
+    "list.no_duplicates": "No se encontraron duplicados.",
+    "list.sort_alphabetical": "Alfabético",
+    "list.sort_chronological": "Cronológico",
+    "list.sort_help": "Haz clic en un encabezado para ordenar.",
+    "list.timestamp": "Marca de tiempo",
+    "practice.correct_prefix": "Correcto: próxima repetición en ",
+    "practice.feedback.correct": "Correcto: próxima repetición en {duration}.",
+    "practice.feedback.retry": "Se volverá a practicar.",
+    "practice.no_hint": "sin pista",
+    "practice.none_due": "No quedan palabras pendientes.",
+    "practice.none_due_initial": "Aún no hay palabras pendientes",
+    "practice.random_due": "Orden aleatorio de palabras pendientes",
+    "practice.retry": "Se volverá a practicar.",
+    "practice.show_hint": "Mostrar pista",
+    "practice.show_solution": "Mostrar solución",
+    "pwa.checking_update": "Buscando actualización. Recarga la página en breve.",
+    "pwa.install_button": "📲 Instalar aplicación",
+    "pwa.install_help": "Abre el entrenador en Chrome y elige Instalar aplicación o Añadir a pantalla de inicio en el menú.",
+    "pwa.update_available": "Hay una nueva versión disponible.",
+    "pwa.update_later": "Más tarde",
+    "pwa.update_now": "Actualizar ahora",
+    "pwa.updating": "Actualizando…",
+    "settings.confirm_delete_all_words": "¿Eliminar definitivamente todo el vocabulario?",
+    "settings.confirm_reset_progress": "¿Restablecer todo el progreso de aprendizaje?",
+    "settings.delete_all_words": "Eliminar todo el vocabulario",
+    "settings.interface_language": "Idioma de la interfaz",
+    "settings.local_storage_note": "El progreso se guarda localmente en este navegador.",
+    "settings.progress_reset": "Progreso restablecido.",
+    "settings.reset_progress": "Restablecer todo el progreso",
+    "settings.reverse_direction": "Invertir dirección (lengua materna → extranjera)",
+    "settings.words_deleted": "Todo el vocabulario eliminado.",
+    "speech.error_unsupported": "La voz no es compatible.",
+    "storage.error_save": "Error al guardar",
+    "tab.entry": "Añadir",
+    "tab.list": "Lista",
+    "tab.practice": "Practicar",
+    "tab.settings": "Configuración",
+    "tab.test": "Evaluar",
+    "test.known_unchanged": "Marcada como conocida; progreso sin cambios.",
+    "test.none_initial": "No hay vocabulario para evaluar.",
+    "test.none_remaining": "No queda vocabulario para evaluar.",
+    "test.random_order": "Orden aleatorio",
+    "test.restart": "Reiniciar prueba",
+    "test.restarted": "Prueba reiniciada.",
+    "test.unknown_reset": "No conocida: progreso reiniciado; vuelve a estar pendiente.",
+    "time.day": "día",
+    "time.days": "días",
+    "time.hour": "hora",
+    "time.hours": "horas",
+    "time.minute": "minuto",
+    "time.minutes": "minutos",
+    "translate.error_empty": "Introduce texto primero.",
+    "translate.error_network": "Falló la traducción. Comprueba tu conexión.",
+    "translate.error_no_result": "Sin traducción",
+    "translate.success": "Traducción insertada.",
+    "vocabulary.hint": "Pista"
+  },
+  "ru": {
+    "answer.known": "Знано",
+    "answer.unknown": "Не знаю",
+    "app.collection_picker": "Выбрать учебный список",
+    "app.title": "Тренажёр слов",
+    "button.speak": "🔊 Озвучить",
+    "button.speak_solution": "🔊 Озвучить ответ",
+    "button.translate_from_foreign": "Перевести с иностранного языка",
+    "button.translate_from_native": "Перевести с родного языка",
+    "collection.add": "Добавить список",
+    "collection.choose": "Выбрать список",
+    "collection.confirm_delete": "Безвозвратно удалить этот список, все слова и прогресс обучения в нём?",
+    "collection.created": "Список создан.",
+    "collection.delete": "Удалить список",
+    "collection.deleted": "Список удалён.",
+    "collection.error_empty_name": "Название списка не может быть пустым.",
+    "collection.error_keep_one": "Должен остаться хотя бы один список.",
+    "collection.error_name_exists": "Список с таким названием уже существует.",
+    "collection.prompt_add": "Введите название нового списка:",
+    "collection.prompt_rename": "Введите новое название списка:",
+    "collection.rename": "Переименовать список",
+    "collection.renamed": "Название списка изменено.",
+    "counter.due": "к повторению",
+    "counter.not_tested": "ещё не проверено",
+    "counter.practice": "{due} к повторению · всего {total}",
+    "counter.test": "Не проверено: {count}",
+    "counter.total": "всего",
+    "entry.error_required": "Введите слово и перевод.",
+    "entry.export_excel": "Экспорт Excel",
+    "entry.foreign_label": "Столбец 1 — Иностранный язык",
+    "entry.heading": "Добавить слово",
+    "entry.hint_label": "Столбец 3 — Подсказка (необязательно)",
+    "entry.import_excel": "Импорт Excel",
+    "entry.import_help": "Импорт: иностранный язык, родной язык, подсказка, известно (обычный режим), временная метка (обычный режим), известно (зеркальный режим), временная метка (зеркальный режим). Поддерживаются старые файлы с дополнительными столбцами.",
+    "entry.native_label": "Столбец 2 — Родной язык",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "яблоко",
+    "entry.speak": "Озвучить",
+    "entry.success": "Слово добавлено.",
+    "import.error_empty_file": "Файл не содержит данных.",
+    "import.error_generic": "Ошибка импорта: {details}",
+    "import.error_library": "Библиотека Excel не загружена. Проверьте интернет.",
+    "import.error_no_rows": "Не найдены строки слов. Проверьте столбцы 1 и 2.",
+    "import.error_prefix": "Ошибка импорта:",
+    "import.success": "Импортировано слов: {count}.",
+    "import.success_suffix": "слов импортировано.",
+    "language.foreign": "Иностранный язык",
+    "language.name.ar": "Арабский",
+    "language.name.de": "Немецкий",
+    "language.name.el": "Греческий",
+    "language.name.en": "Английский",
+    "language.name.es": "Испанский",
+    "language.name.fr": "Французский",
+    "language.name.it": "Итальянский",
+    "language.name.ja": "Японский",
+    "language.name.pl": "Польский",
+    "language.name.ru": "Русский",
+    "language.name.tr": "Турецкий",
+    "language.name.uk": "Украинский",
+    "language.name.zh": "Китайский",
+    "language.native": "Родной язык",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "Найдены дубликаты. Удалить?",
+    "list.confirm_delete_word": "Действительно удалить это слово?",
+    "list.delete_duplicates": "Удалить дубликаты",
+    "list.delete_word": "Удалить слово",
+    "list.delete_word_aria": "Удалить слово: {word}",
+    "list.duplicates_deleted": "Дубликаты удалены.",
+    "list.duplicates_deleted_count": "Удалено дубликатов: {count}.",
+    "list.heading": "Список слов",
+    "list.known_count": "Знаю",
+    "list.no_duplicates": "Дубликаты не найдены.",
+    "list.sort_alphabetical": "По алфавиту",
+    "list.sort_chronological": "По времени",
+    "list.sort_help": "Нажмите заголовок столбца для сортировки.",
+    "list.timestamp": "Временная метка",
+    "practice.correct_prefix": "Верно — следующее повторение через ",
+    "practice.feedback.correct": "Верно — повторение через {duration}.",
+    "practice.feedback.retry": "Будет повторено.",
+    "practice.no_hint": "нет подсказки",
+    "practice.none_due": "Нет слов для повторения.",
+    "practice.none_due_initial": "Пока нет слов к повторению",
+    "practice.random_due": "Случайный порядок всех слов к повторению",
+    "practice.retry": "Будет повторено ещё раз.",
+    "practice.show_hint": "Показать подсказку",
+    "practice.show_solution": "Показать ответ",
+    "pwa.checking_update": "Проверка обновления. Скоро перезагрузите страницу.",
+    "pwa.install_button": "📲 Установить приложение",
+    "pwa.install_help": "Откройте тренажёр в Chrome и выберите в меню «Установить приложение» или «Добавить на главный экран».",
+    "pwa.update_available": "Доступна новая версия.",
+    "pwa.update_later": "Позже",
+    "pwa.update_now": "Обновить сейчас",
+    "pwa.updating": "Обновление…",
+    "settings.confirm_delete_all_words": "Удалить все слова без возможности восстановления?",
+    "settings.confirm_reset_progress": "Сбросить весь учебный прогресс?",
+    "settings.delete_all_words": "Удалить все слова",
+    "settings.interface_language": "Язык интерфейса",
+    "settings.local_storage_note": "Прогресс сохраняется локально в этом браузере.",
+    "settings.progress_reset": "Прогресс обучения сброшен.",
+    "settings.reset_progress": "Сбросить весь прогресс",
+    "settings.reverse_direction": "Обратное направление (родной → иностранный)",
+    "settings.words_deleted": "Все слова удалены.",
+    "speech.error_unsupported": "Синтез речи не поддерживается.",
+    "storage.error_save": "Не удалось сохранить",
+    "tab.entry": "Добавить",
+    "tab.list": "Список",
+    "tab.practice": "Практика",
+    "tab.settings": "Настройки",
+    "tab.test": "Тест",
+    "test.known_unchanged": "Отмечено как известное; прогресс не изменён.",
+    "test.none_initial": "Нет слов для тестирования.",
+    "test.none_remaining": "Слова для тестирования закончились.",
+    "test.random_order": "Случайный порядок",
+    "test.restart": "Перезапустить тест",
+    "test.restarted": "Тест перезапущен.",
+    "test.unknown_reset": "Не угадано: прогресс сброшен, слово снова к повторению.",
+    "time.day": "день",
+    "time.days": "дней",
+    "time.hour": "час",
+    "time.hours": "часов",
+    "time.minute": "минута",
+    "time.minutes": "минут",
+    "translate.error_empty": "Сначала введите текст.",
+    "translate.error_network": "Перевод не удался. Проверьте интернет.",
+    "translate.error_no_result": "Перевод не найден",
+    "translate.success": "Перевод вставлен.",
+    "vocabulary.hint": "Подсказка"
+  },
+  "zh": {
+    "answer.known": "已知",
+    "answer.unknown": "不认识",
+    "app.collection_picker": "选择学习列表",
+    "app.title": "词汇训练器",
+    "button.speak": "🔊朗读",
+    "button.speak_solution": "🔊朗读答案",
+    "button.translate_from_foreign": "从外语翻译",
+    "button.translate_from_native": "从母语翻译",
+    "collection.add": "添加新列表",
+    "collection.choose": "选择列表",
+    "collection.confirm_delete": "永久删除此列表及其中保存的所有词汇和学习进度？",
+    "collection.created": "列表已创建。",
+    "collection.delete": "删除列表",
+    "collection.deleted": "列表已删除。",
+    "collection.error_empty_name": "列表名称不能为空。",
+    "collection.error_keep_one": "必须至少保留一个列表。",
+    "collection.error_name_exists": "已存在同名列表。",
+    "collection.prompt_add": "输入新列表名称：",
+    "collection.prompt_rename": "输入列表的新名称：",
+    "collection.rename": "重命名列表",
+    "collection.renamed": "列表名称已更改。",
+    "counter.due": "待复习",
+    "counter.not_tested": "尚未测试",
+    "counter.practice": "{due} 个待复习 · 共 {total} 个",
+    "counter.test": "{count} 个尚未测试",
+    "counter.total": "总计",
+    "entry.error_required": "请填写词汇和翻译。",
+    "entry.export_excel": "导出 Excel",
+    "entry.foreign_label": "第1列—外语",
+    "entry.heading": "添加词汇",
+    "entry.hint_label": "第3列—提示（可选）",
+    "entry.import_excel": "导入 Excel",
+    "entry.import_help": "导入：外语、母语、提示、已知（普通）、时间戳（普通）、已知（镜像）、时间戳（镜像）。也支持带额外列的旧导出文件。",
+    "entry.native_label": "第2列—母语",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "苹果",
+    "entry.speak": "朗读",
+    "entry.success": "词汇已添加。",
+    "import.error_empty_file": "文件没有数据。",
+    "import.error_generic": "导入失败：{details}",
+    "import.error_library": "未加载 Excel 库。请检查网络连接。",
+    "import.error_no_rows": "未识别到词汇行。请检查第 1、2 列。",
+    "import.error_prefix": "导入失败：",
+    "import.success": "已导入 {count} 个词汇。",
+    "import.success_suffix": "个词汇已导入。",
+    "language.foreign": "外语",
+    "language.name.ar": "阿拉伯语",
+    "language.name.de": "德语",
+    "language.name.el": "希腊语",
+    "language.name.en": "英语",
+    "language.name.es": "西班牙语",
+    "language.name.fr": "法语",
+    "language.name.it": "意大利语",
+    "language.name.ja": "日语",
+    "language.name.pl": "波兰语",
+    "language.name.ru": "俄语",
+    "language.name.tr": "土耳其语",
+    "language.name.uk": "乌克兰语",
+    "language.name.zh": "中文",
+    "language.native": "母语",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "发现重复项。要删除吗？",
+    "list.confirm_delete_word": "确定删除此词汇吗？",
+    "list.delete_duplicates": "删除重复项",
+    "list.delete_word": "删除词汇",
+    "list.delete_word_aria": "删除词汇：{word}",
+    "list.duplicates_deleted": "重复项已删除。",
+    "list.duplicates_deleted_count": "已删除 {count} 个重复项。",
+    "list.heading": "词汇表",
+    "list.known_count": "已知",
+    "list.no_duplicates": "未发现重复项。",
+    "list.sort_alphabetical": "按字母",
+    "list.sort_chronological": "按时间",
+    "list.sort_help": "点击列标题进行排序。",
+    "list.timestamp": "时间戳",
+    "practice.correct_prefix": "正确——下次复习时间：",
+    "practice.feedback.correct": "正确——下次复习时间：{duration}。",
+    "practice.feedback.retry": "将再次练习。",
+    "practice.no_hint": "无提示",
+    "practice.none_due": "没有待复习词汇。",
+    "practice.none_due_initial": "暂无到期词汇",
+    "practice.random_due": "所有到期词随机排序",
+    "practice.retry": "将再次练习。",
+    "practice.show_hint": "显示提示",
+    "practice.show_solution": "显示答案",
+    "pwa.checking_update": "正在检查更新。请稍后重新加载页面。",
+    "pwa.install_button": "📲 安装应用",
+    "pwa.install_help": "在 Chrome 中打开词汇训练器，并在菜单中选择“安装应用”或“添加到主屏幕”。",
+    "pwa.update_available": "有新版本可用。",
+    "pwa.update_later": "稍后",
+    "pwa.update_now": "立即更新",
+    "pwa.updating": "正在更新…",
+    "settings.confirm_delete_all_words": "确定永久删除所有词汇吗？",
+    "settings.confirm_reset_progress": "确定重置全部学习进度吗？",
+    "settings.delete_all_words": "删除所有词汇",
+    "settings.interface_language": "界面语言",
+    "settings.local_storage_note": "学习进度保存在此浏览器本地。",
+    "settings.progress_reset": "学习进度已重置。",
+    "settings.reset_progress": "重置全部学习进度",
+    "settings.reverse_direction": "反转学习方向（母语 → 外语）",
+    "settings.words_deleted": "所有词汇已删除。",
+    "speech.error_unsupported": "不支持语音输出。",
+    "storage.error_save": "保存失败",
+    "tab.entry": "添加",
+    "tab.list": "列表",
+    "tab.practice": "练习",
+    "tab.settings": "设置",
+    "tab.test": "测试",
+    "test.known_unchanged": "已标记为认识；学习进度不变。",
+    "test.none_initial": "没有可测试的词汇。",
+    "test.none_remaining": "没有剩余可测试词汇。",
+    "test.random_order": "随机顺序",
+    "test.restart": "重新开始测试",
+    "test.restarted": "测试已重新开始。",
+    "test.unknown_reset": "未掌握：进度已重置，现在再次到期。",
+    "time.day": "天",
+    "time.days": "天",
+    "time.hour": "小时",
+    "time.hours": "小时",
+    "time.minute": "分钟",
+    "time.minutes": "分钟",
+    "translate.error_empty": "请先输入文本。",
+    "translate.error_network": "翻译失败。请检查网络连接。",
+    "translate.error_no_result": "没有译文",
+    "translate.success": "已插入翻译。",
+    "vocabulary.hint": "提示"
+  },
+  "ja": {
+    "answer.known": "わかった",
+    "answer.unknown": "わからない",
+    "app.collection_picker": "学習リストを選択",
+    "app.title": "単語トレーナー",
+    "button.speak": "🔊 読み上げ",
+    "button.speak_solution": "🔊 解答を読み上げ",
+    "button.translate_from_foreign": "外国語から翻訳",
+    "button.translate_from_native": "母語から翻訳",
+    "collection.add": "新しいリストを追加",
+    "collection.choose": "リストを選択",
+    "collection.confirm_delete": "このリストと、保存されているすべての単語および学習状況を完全に削除しますか？",
+    "collection.created": "リストを作成しました。",
+    "collection.delete": "リストを削除",
+    "collection.deleted": "リストを削除しました。",
+    "collection.error_empty_name": "リスト名を空にすることはできません。",
+    "collection.error_keep_one": "少なくとも1つのリストを残す必要があります。",
+    "collection.error_name_exists": "同じ名前のリストが既にあります。",
+    "collection.prompt_add": "新しいリスト名を入力してください：",
+    "collection.prompt_rename": "リストの新しい名前を入力してください：",
+    "collection.rename": "リスト名を変更",
+    "collection.renamed": "リスト名を変更しました。",
+    "counter.due": "復習対象",
+    "counter.not_tested": "未テスト",
+    "counter.practice": "復習待ち {due} · 合計 {total}",
+    "counter.test": "未テスト {count} 語",
+    "counter.total": "合計",
+    "entry.error_required": "単語と訳を入力してください。",
+    "entry.export_excel": "Excelを書き出す",
+    "entry.foreign_label": "列1・外国語",
+    "entry.heading": "単語を登録",
+    "entry.hint_label": "列3・ヒント（任意）",
+    "entry.import_excel": "Excelを読み込む",
+    "entry.import_help": "インポート：外国語、母語、ヒント、わかった（通常）、タイムスタンプ（通常）、わかった（反転）、タイムスタンプ（反転）。追加列のある古いエクスポートファイルにも対応します。",
+    "entry.native_label": "列2・母語",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "りんご",
+    "entry.speak": "読み上げ",
+    "entry.success": "単語を追加しました。",
+    "import.error_empty_file": "ファイルにデータがありません。",
+    "import.error_generic": "インポート失敗：{details}",
+    "import.error_library": "Excel ライブラリが読み込まれていません。ネット接続を確認してください。",
+    "import.error_no_rows": "単語の行が見つかりません。1列目と2列目を確認してください。",
+    "import.error_prefix": "インポート失敗：",
+    "import.success": "{count} 語をインポートしました。",
+    "import.success_suffix": "語をインポートしました。",
+    "language.foreign": "外国語",
+    "language.name.ar": "アラビア語",
+    "language.name.de": "ドイツ語",
+    "language.name.el": "ギリシャ語",
+    "language.name.en": "英語",
+    "language.name.es": "スペイン語",
+    "language.name.fr": "フランス語",
+    "language.name.it": "イタリア語",
+    "language.name.ja": "日本語",
+    "language.name.pl": "ポーランド語",
+    "language.name.ru": "ロシア語",
+    "language.name.tr": "トルコ語",
+    "language.name.uk": "ウクライナ語",
+    "language.name.zh": "中国語",
+    "language.native": "母語",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "重複が見つかりました。削除しますか？",
+    "list.confirm_delete_word": "この単語を本当に削除しますか？",
+    "list.delete_duplicates": "重複を削除",
+    "list.delete_word": "単語を削除",
+    "list.delete_word_aria": "単語を削除：{word}",
+    "list.duplicates_deleted": "重複を削除しました。",
+    "list.duplicates_deleted_count": "重複を {count} 件削除しました。",
+    "list.heading": "単語リスト",
+    "list.known_count": "わかった",
+    "list.no_duplicates": "重複はありません。",
+    "list.sort_alphabetical": "アルファベット順",
+    "list.sort_chronological": "時系列",
+    "list.sort_help": "列見出しをクリックして並べ替えます。",
+    "list.timestamp": "タイムスタンプ",
+    "practice.correct_prefix": "正解 — 次の復習まで ",
+    "practice.feedback.correct": "正解 — 次の復習まで {duration}。",
+    "practice.feedback.retry": "もう一度練習します。",
+    "practice.no_hint": "ヒントなし",
+    "practice.none_due": "復習する単語はありません。",
+    "practice.none_due_initial": "まだ復習する単語はありません",
+    "practice.random_due": "期限の単語をランダムに出題",
+    "practice.retry": "もう一度練習します。",
+    "practice.show_hint": "ヒントを表示",
+    "practice.show_solution": "答えを表示",
+    "pwa.checking_update": "更新を確認しています。少ししてページを再読み込みしてください。",
+    "pwa.install_button": "📲 アプリをインストール",
+    "pwa.install_help": "Chromeで単語トレーナーを開き、メニューから「アプリをインストール」または「ホーム画面に追加」を選択してください。",
+    "pwa.update_available": "新しいバージョンがあります。",
+    "pwa.update_later": "後で",
+    "pwa.update_now": "今すぐ更新",
+    "pwa.updating": "更新中…",
+    "settings.confirm_delete_all_words": "すべての単語を完全に削除しますか？",
+    "settings.confirm_reset_progress": "学習進捗をすべてリセットしますか？",
+    "settings.delete_all_words": "すべての単語を削除",
+    "settings.interface_language": "インターフェース言語",
+    "settings.local_storage_note": "学習の進捗はこのブラウザーに保存されます。",
+    "settings.progress_reset": "学習進捗をリセットしました。",
+    "settings.reset_progress": "すべての学習進捗をリセット",
+    "settings.reverse_direction": "学習方向を反転（母語 → 外国語）",
+    "settings.words_deleted": "すべての単語を削除しました。",
+    "speech.error_unsupported": "音声読み上げに対応していません。",
+    "storage.error_save": "保存に失敗しました",
+    "tab.entry": "登録",
+    "tab.list": "リスト",
+    "tab.practice": "練習",
+    "tab.settings": "設定",
+    "tab.test": "テスト",
+    "test.known_unchanged": "既知としてマークしました。進捗は変更されません。",
+    "test.none_initial": "テストする単語がありません。",
+    "test.none_remaining": "テストする単語は残っていません。",
+    "test.random_order": "ランダム順",
+    "test.restart": "テストを再開",
+    "test.restarted": "テストを再開しました。",
+    "test.unknown_reset": "不正解：進捗をリセットし、再び復習対象になりました。",
+    "time.day": "日",
+    "time.days": "日",
+    "time.hour": "時間",
+    "time.hours": "時間",
+    "time.minute": "分",
+    "time.minutes": "分",
+    "translate.error_empty": "先にテキストを入力してください。",
+    "translate.error_network": "翻訳に失敗しました。接続を確認してください。",
+    "translate.error_no_result": "翻訳なし",
+    "translate.success": "翻訳を挿入しました。",
+    "vocabulary.hint": "ヒント"
+  },
+  "fr": {
+    "answer.known": "Su",
+    "answer.unknown": "Non su",
+    "app.collection_picker": "Choisir une liste d’apprentissage",
+    "app.title": "Entraîneur de vocabulaire",
+    "button.speak": "🔊 Écouter",
+    "button.speak_solution": "🔊 Lire la réponse",
+    "button.translate_from_foreign": "Traduire depuis la langue étrangère",
+    "button.translate_from_native": "Traduire depuis la langue maternelle",
+    "collection.add": "Ajouter une liste",
+    "collection.choose": "Choisir une liste",
+    "collection.confirm_delete": "Supprimer définitivement cette liste ainsi que tout le vocabulaire et la progression qu'elle contient ?",
+    "collection.created": "Liste créée.",
+    "collection.delete": "Supprimer la liste",
+    "collection.deleted": "Liste supprimée.",
+    "collection.error_empty_name": "Le nom de la liste ne peut pas être vide.",
+    "collection.error_keep_one": "Au moins une liste doit être conservée.",
+    "collection.error_name_exists": "Une liste portant ce nom existe déjà.",
+    "collection.prompt_add": "Saisissez le nom de la nouvelle liste :",
+    "collection.prompt_rename": "Saisissez un nouveau nom pour la liste :",
+    "collection.rename": "Renommer la liste",
+    "collection.renamed": "Liste renommée.",
+    "counter.due": "à réviser",
+    "counter.not_tested": "pas encore testé",
+    "counter.practice": "{due} à réviser · {total} au total",
+    "counter.test": "{count} non testés",
+    "counter.total": "au total",
+    "entry.error_required": "Veuillez saisir le mot et sa traduction.",
+    "entry.export_excel": "Exporter Excel",
+    "entry.foreign_label": "Colonne 1 – Langue étrangère",
+    "entry.heading": "Ajouter du vocabulaire",
+    "entry.hint_label": "Colonne 3 – Indice (facultatif)",
+    "entry.import_excel": "Importer Excel",
+    "entry.import_help": "Importation : langue étrangère, langue maternelle, indice, connu (normal), horodatage (normal), connu (miroir), horodatage (miroir). Les anciens fichiers avec colonnes supplémentaires sont aussi pris en charge.",
+    "entry.native_label": "Colonne 2 – Langue maternelle",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "pomme",
+    "entry.speak": "Écouter",
+    "entry.success": "Vocabulaire ajouté.",
+    "import.error_empty_file": "Le fichier ne contient aucune donnée.",
+    "import.error_generic": "Échec de l’importation : {details}",
+    "import.error_library": "La bibliothèque Excel n’est pas chargée. Vérifiez Internet.",
+    "import.error_no_rows": "Aucun vocabulaire détecté. Vérifiez les colonnes 1 et 2.",
+    "import.error_prefix": "Échec de l’importation :",
+    "import.success": "{count} mots importés.",
+    "import.success_suffix": "mots importés.",
+    "language.foreign": "Langue étrangère",
+    "language.name.ar": "Arabe",
+    "language.name.de": "Allemand",
+    "language.name.el": "Grec",
+    "language.name.en": "Anglais",
+    "language.name.es": "Espagnol",
+    "language.name.fr": "Français",
+    "language.name.it": "Italien",
+    "language.name.ja": "Japonais",
+    "language.name.pl": "Polonais",
+    "language.name.ru": "Russe",
+    "language.name.tr": "Turc",
+    "language.name.uk": "Ukrainien",
+    "language.name.zh": "Chinois",
+    "language.native": "Langue maternelle",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "Doublons trouvés. Supprimer ?",
+    "list.confirm_delete_word": "Supprimer vraiment ce vocabulaire ?",
+    "list.delete_duplicates": "Supprimer les doublons",
+    "list.delete_word": "Supprimer le vocabulaire",
+    "list.delete_word_aria": "Supprimer le vocabulaire : {word}",
+    "list.duplicates_deleted": "Doublons supprimés.",
+    "list.duplicates_deleted_count": "{count} doublon(s) supprimé(s).",
+    "list.heading": "Liste de vocabulaire",
+    "list.known_count": "Connu",
+    "list.no_duplicates": "Aucun doublon trouvé.",
+    "list.sort_alphabetical": "Alphabétique",
+    "list.sort_chronological": "Chronologique",
+    "list.sort_help": "Cliquez sur un en-tête pour trier.",
+    "list.timestamp": "Horodatage",
+    "practice.correct_prefix": "Correct — prochaine révision dans ",
+    "practice.feedback.correct": "Correct — prochaine révision dans {duration}.",
+    "practice.feedback.retry": "À revoir.",
+    "practice.no_hint": "aucun indice",
+    "practice.none_due": "Aucun mot à réviser.",
+    "practice.none_due_initial": "Aucun mot à réviser pour le moment",
+    "practice.random_due": "Ordre aléatoire des mots à réviser",
+    "practice.retry": "Sera révisé à nouveau.",
+    "practice.show_hint": "Afficher l’indice",
+    "practice.show_solution": "Afficher la réponse",
+    "pwa.checking_update": "Recherche de mise à jour. Rechargez bientôt la page.",
+    "pwa.install_button": "📲 Installer l’application",
+    "pwa.install_help": "Ouvrez le trainer dans Chrome et choisissez Installer l’application ou Ajouter à l’écran d’accueil dans le menu.",
+    "pwa.update_available": "Une nouvelle version est disponible.",
+    "pwa.update_later": "Plus tard",
+    "pwa.update_now": "Mettre à jour",
+    "pwa.updating": "Mise à jour…",
+    "settings.confirm_delete_all_words": "Supprimer définitivement tout le vocabulaire ?",
+    "settings.confirm_reset_progress": "Réinitialiser toute la progression ?",
+    "settings.delete_all_words": "Supprimer tout le vocabulaire",
+    "settings.interface_language": "Langue de l’interface",
+    "settings.local_storage_note": "La progression est enregistrée localement dans ce navigateur.",
+    "settings.progress_reset": "Progression réinitialisée.",
+    "settings.reset_progress": "Réinitialiser toute la progression",
+    "settings.reverse_direction": "Inverser le sens (langue maternelle → étrangère)",
+    "settings.words_deleted": "Tout le vocabulaire a été supprimé.",
+    "speech.error_unsupported": "La synthèse vocale n’est pas prise en charge.",
+    "storage.error_save": "Échec de l’enregistrement",
+    "tab.entry": "Ajouter",
+    "tab.list": "Liste",
+    "tab.practice": "Pratiquer",
+    "tab.settings": "Paramètres",
+    "tab.test": "Tester",
+    "test.known_unchanged": "Marqué comme connu ; progression inchangée.",
+    "test.none_initial": "Aucun vocabulaire à tester.",
+    "test.none_remaining": "Il ne reste aucun mot à tester.",
+    "test.random_order": "Ordre aléatoire",
+    "test.restart": "Recommencer le test",
+    "test.restarted": "Test redémarré.",
+    "test.unknown_reset": "Non connu : progression réinitialisée, à revoir maintenant.",
+    "time.day": "jour",
+    "time.days": "jours",
+    "time.hour": "heure",
+    "time.hours": "heures",
+    "time.minute": "minute",
+    "time.minutes": "minutes",
+    "translate.error_empty": "Veuillez saisir du texte.",
+    "translate.error_network": "Échec de la traduction. Vérifiez Internet.",
+    "translate.error_no_result": "Aucune traduction",
+    "translate.success": "Traduction insérée.",
+    "vocabulary.hint": "Indice"
+  },
+  "it": {
+    "answer.known": "Conosciuta",
+    "answer.unknown": "Non conosciuta",
+    "app.collection_picker": "Scegli elenco di studio",
+    "app.title": "Allenatore di vocaboli",
+    "button.speak": "🔊 Ascolta",
+    "button.speak_solution": "🔊 Leggi la risposta",
+    "button.translate_from_foreign": "Traduci dalla lingua straniera",
+    "button.translate_from_native": "Traduci dalla lingua madre",
+    "collection.add": "Aggiungi elenco",
+    "collection.choose": "Scegli elenco",
+    "collection.confirm_delete": "Eliminare definitivamente questo elenco e tutti i vocaboli e i progressi in esso contenuti?",
+    "collection.created": "Elenco creato.",
+    "collection.delete": "Elimina elenco",
+    "collection.deleted": "Elenco eliminato.",
+    "collection.error_empty_name": "Il nome dell'elenco non può essere vuoto.",
+    "collection.error_keep_one": "Deve rimanere almeno un elenco.",
+    "collection.error_name_exists": "Esiste già un elenco con questo nome.",
+    "collection.prompt_add": "Inserisci il nome del nuovo elenco:",
+    "collection.prompt_rename": "Inserisci un nuovo nome per l'elenco:",
+    "collection.rename": "Rinomina elenco",
+    "collection.renamed": "Nome dell'elenco modificato.",
+    "counter.due": "da ripassare",
+    "counter.not_tested": "non ancora testato",
+    "counter.practice": "{due} da ripassare · {total} totali",
+    "counter.test": "{count} non testate",
+    "counter.total": "in totale",
+    "entry.error_required": "Inserisci il vocabolo e la traduzione.",
+    "entry.export_excel": "Esporta Excel",
+    "entry.foreign_label": "Colonna 1 – Lingua straniera",
+    "entry.heading": "Inserisci vocabolo",
+    "entry.hint_label": "Colonna 3 – Suggerimento (facoltativo)",
+    "entry.import_excel": "Importa Excel",
+    "entry.import_help": "Importazione: lingua straniera, lingua madre, suggerimento, conosciuto (normale), data/ora (normale), conosciuto (speculare), data/ora (speculare). Sono supportati anche i vecchi file con colonne aggiuntive.",
+    "entry.native_label": "Colonna 2 – Lingua madre",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "mela",
+    "entry.speak": "Ascolta",
+    "entry.success": "Vocabolo aggiunto.",
+    "import.error_empty_file": "Il file non contiene dati.",
+    "import.error_generic": "Importazione non riuscita: {details}",
+    "import.error_library": "Libreria Excel non caricata. Controlla la connessione.",
+    "import.error_no_rows": "Nessuna voce rilevata. Controlla le colonne 1 e 2.",
+    "import.error_prefix": "Importazione non riuscita:",
+    "import.success": "Importate {count} vocaboli.",
+    "import.success_suffix": "vocaboli importati.",
+    "language.foreign": "Lingua straniera",
+    "language.name.ar": "Arabo",
+    "language.name.de": "Tedesco",
+    "language.name.el": "Greco",
+    "language.name.en": "Inglese",
+    "language.name.es": "Spagnolo",
+    "language.name.fr": "Francese",
+    "language.name.it": "Italiano",
+    "language.name.ja": "Giapponese",
+    "language.name.pl": "Polacco",
+    "language.name.ru": "Russo",
+    "language.name.tr": "Turco",
+    "language.name.uk": "Ucraino",
+    "language.name.zh": "Cinese",
+    "language.native": "Lingua madre",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "Duplicati trovati. Eliminare?",
+    "list.confirm_delete_word": "Eliminare davvero questo vocabolo?",
+    "list.delete_duplicates": "Elimina duplicati",
+    "list.delete_word": "Elimina vocabolo",
+    "list.delete_word_aria": "Elimina vocabolo: {word}",
+    "list.duplicates_deleted": "Duplicati eliminati.",
+    "list.duplicates_deleted_count": "Eliminati {count} duplicato/i.",
+    "list.heading": "Elenco vocaboli",
+    "list.known_count": "Conosciuto",
+    "list.no_duplicates": "Nessun duplicato trovato.",
+    "list.sort_alphabetical": "Alfabetico",
+    "list.sort_chronological": "Cronologico",
+    "list.sort_help": "Fai clic su un'intestazione per ordinare.",
+    "list.timestamp": "Data e ora",
+    "practice.correct_prefix": "Corretto — prossimo ripasso tra ",
+    "practice.feedback.correct": "Corretto – prossimo ripasso tra {duration}.",
+    "practice.feedback.retry": "Da ripassare.",
+    "practice.no_hint": "nessun suggerimento",
+    "practice.none_due": "Nessun vocabolo da ripassare.",
+    "practice.none_due_initial": "Nessun vocabolo da ripassare",
+    "practice.random_due": "Ordine casuale delle parole da ripassare",
+    "practice.retry": "Verrà ripassato di nuovo.",
+    "practice.show_hint": "Mostra suggerimento",
+    "practice.show_solution": "Mostra risposta",
+    "pwa.checking_update": "Controllo aggiornamenti. Ricarica la pagina tra poco.",
+    "pwa.install_button": "📲 Installa app",
+    "pwa.install_help": "Apri il trainer in Chrome e scegli Installa app o Aggiungi alla schermata Home dal menu.",
+    "pwa.update_available": "È disponibile una nuova versione.",
+    "pwa.update_later": "Più tardi",
+    "pwa.update_now": "Aggiorna ora",
+    "pwa.updating": "Aggiornamento…",
+    "settings.confirm_delete_all_words": "Eliminare definitivamente tutti i vocaboli?",
+    "settings.confirm_reset_progress": "Azzerare tutto il progresso di apprendimento?",
+    "settings.delete_all_words": "Elimina tutti i vocaboli",
+    "settings.interface_language": "Lingua dell’interfaccia",
+    "settings.local_storage_note": "I progressi vengono salvati localmente in questo browser.",
+    "settings.progress_reset": "Progressi azzerati.",
+    "settings.reset_progress": "Azzera tutti i progressi",
+    "settings.reverse_direction": "Inverti direzione (madrelingua → straniera)",
+    "settings.words_deleted": "Tutti i vocaboli eliminati.",
+    "speech.error_unsupported": "La sintesi vocale non è supportata.",
+    "storage.error_save": "Salvataggio non riuscito",
+    "tab.entry": "Inserisci",
+    "tab.list": "Elenco",
+    "tab.practice": "Esercizio",
+    "tab.settings": "Impostazioni",
+    "tab.test": "Test",
+    "test.known_unchanged": "Segnato come conosciuto; progressi invariati.",
+    "test.none_initial": "Nessun vocabolo da testare.",
+    "test.none_remaining": "Non restano vocaboli da testare.",
+    "test.random_order": "Ordine casuale",
+    "test.restart": "Ricomincia test",
+    "test.restarted": "Test riavviato.",
+    "test.unknown_reset": "Non conosciuta: progresso azzerato, da ripassare ora.",
+    "time.day": "giorno",
+    "time.days": "giorni",
+    "time.hour": "ora",
+    "time.hours": "ore",
+    "time.minute": "minuto",
+    "time.minutes": "minuti",
+    "translate.error_empty": "Inserisci prima il testo.",
+    "translate.error_network": "Traduzione non riuscita. Controlla Internet.",
+    "translate.error_no_result": "Nessuna traduzione",
+    "translate.success": "Traduzione inserita.",
+    "vocabulary.hint": "Suggerimento"
+  },
+  "uk": {
+    "answer.known": "Відомо",
+    "answer.unknown": "Не знаю",
+    "app.collection_picker": "Вибрати навчальний список",
+    "app.title": "Тренажер слів",
+    "button.speak": "🔊 Озвучити",
+    "button.speak_solution": "🔊 Озвучити відповідь",
+    "button.translate_from_foreign": "Перекласти з іноземної мови",
+    "button.translate_from_native": "Перекласти з рідної мови",
+    "collection.add": "Додати список",
+    "collection.choose": "Вибрати список",
+    "collection.confirm_delete": "Остаточно видалити цей список, усі слова та прогрес навчання в ньому?",
+    "collection.created": "Список створено.",
+    "collection.delete": "Видалити список",
+    "collection.deleted": "Список видалено.",
+    "collection.error_empty_name": "Назва списку не може бути порожньою.",
+    "collection.error_keep_one": "Має залишитися принаймні один список.",
+    "collection.error_name_exists": "Список із такою назвою вже існує.",
+    "collection.prompt_add": "Введіть назву нового списку:",
+    "collection.prompt_rename": "Введіть нову назву списку:",
+    "collection.rename": "Перейменувати список",
+    "collection.renamed": "Назву списку змінено.",
+    "counter.due": "до повторення",
+    "counter.not_tested": "ще не перевірено",
+    "counter.practice": "До повторення: {due} · усього {total}",
+    "counter.test": "Не перевірено: {count}",
+    "counter.total": "загалом",
+    "entry.error_required": "Введіть слово та переклад.",
+    "entry.export_excel": "Експорт Excel",
+    "entry.foreign_label": "Стовпець 1 — Іноземна мова",
+    "entry.heading": "Додати слово",
+    "entry.hint_label": "Стовпець 3 — Підказка (необов’язково)",
+    "entry.import_excel": "Імпорт Excel",
+    "entry.import_help": "Імпорт: іноземна мова, рідна мова, підказка, відомо (звичайний режим), часова мітка (звичайний режим), відомо (дзеркальний режим), часова мітка (дзеркальний режим). Підтримуються старі файли з додатковими стовпцями.",
+    "entry.native_label": "Стовпець 2 — Рідна мова",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "яблуко",
+    "entry.speak": "Озвучити",
+    "entry.success": "Слово додано.",
+    "import.error_empty_file": "Файл не містить даних.",
+    "import.error_generic": "Помилка імпорту: {details}",
+    "import.error_library": "Бібліотеку Excel не завантажено. Перевірте інтернет.",
+    "import.error_no_rows": "Не знайдено рядків слів. Перевірте стовпці 1 і 2.",
+    "import.error_prefix": "Помилка імпорту:",
+    "import.success": "Імпортовано слів: {count}.",
+    "import.success_suffix": "слів імпортовано.",
+    "language.foreign": "Іноземна мова",
+    "language.name.ar": "Арабська",
+    "language.name.de": "Німецька",
+    "language.name.el": "Грецька",
+    "language.name.en": "Англійська",
+    "language.name.es": "Іспанська",
+    "language.name.fr": "Французька",
+    "language.name.it": "Італійська",
+    "language.name.ja": "Японська",
+    "language.name.pl": "Польська",
+    "language.name.ru": "Російська",
+    "language.name.tr": "Турецька",
+    "language.name.uk": "Українська",
+    "language.name.zh": "Китайська",
+    "language.native": "Рідна мова",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "Знайдено дублікати. Видалити?",
+    "list.confirm_delete_word": "Справді видалити це слово?",
+    "list.delete_duplicates": "Видалити дублікати",
+    "list.delete_word": "Видалити слово",
+    "list.delete_word_aria": "Видалити слово: {word}",
+    "list.duplicates_deleted": "Дублікати видалено.",
+    "list.duplicates_deleted_count": "Видалено дублікатів: {count}.",
+    "list.heading": "Список слів",
+    "list.known_count": "Відомо",
+    "list.no_duplicates": "Дублікатів не знайдено.",
+    "list.sort_alphabetical": "За абеткою",
+    "list.sort_chronological": "Хронологічно",
+    "list.sort_help": "Натисніть заголовок стовпця для сортування.",
+    "list.timestamp": "Часова мітка",
+    "practice.correct_prefix": "Правильно — наступне повторення через ",
+    "practice.feedback.correct": "Правильно — наступне повторення через {duration}.",
+    "practice.feedback.retry": "Буде повторено.",
+    "practice.no_hint": "немає підказки",
+    "practice.none_due": "Немає слів для повторення.",
+    "practice.none_due_initial": "Поки немає слів до повторення",
+    "practice.random_due": "Випадковий порядок усіх слів до повторення",
+    "practice.retry": "Буде повторено ще раз.",
+    "practice.show_hint": "Показати підказку",
+    "practice.show_solution": "Показати відповідь",
+    "pwa.checking_update": "Перевірка оновлення. Незабаром перезавантажте сторінку.",
+    "pwa.install_button": "📲 Установити застосунок",
+    "pwa.install_help": "Відкрийте тренажер у Chrome і виберіть у меню «Установити застосунок» або «Додати на головний екран».",
+    "pwa.update_available": "Доступна нова версія.",
+    "pwa.update_later": "Пізніше",
+    "pwa.update_now": "Оновити зараз",
+    "pwa.updating": "Оновлення…",
+    "settings.confirm_delete_all_words": "Назавжди видалити всі слова?",
+    "settings.confirm_reset_progress": "Скинути весь навчальний прогрес?",
+    "settings.delete_all_words": "Видалити всі слова",
+    "settings.interface_language": "Мова інтерфейсу",
+    "settings.local_storage_note": "Прогрес зберігається локально в цьому браузері.",
+    "settings.progress_reset": "Прогрес навчання скинуто.",
+    "settings.reset_progress": "Скинути весь прогрес",
+    "settings.reverse_direction": "Змінити напрямок (рідна → іноземна)",
+    "settings.words_deleted": "Усі слова видалено.",
+    "speech.error_unsupported": "Мовлення не підтримується.",
+    "storage.error_save": "Не вдалося зберегти",
+    "tab.entry": "Додати",
+    "tab.list": "Список",
+    "tab.practice": "Вправи",
+    "tab.settings": "Налаштування",
+    "tab.test": "Тест",
+    "test.known_unchanged": "Позначено як відоме; прогрес без змін.",
+    "test.none_initial": "Немає слів для тестування.",
+    "test.none_remaining": "Слів для тестування більше немає.",
+    "test.random_order": "Випадковий порядок",
+    "test.restart": "Перезапустити тест",
+    "test.restarted": "Тест перезапущено.",
+    "test.unknown_reset": "Не відомо: прогрес скинуто, слово знову до повторення.",
+    "time.day": "день",
+    "time.days": "днів",
+    "time.hour": "година",
+    "time.hours": "годин",
+    "time.minute": "хвилина",
+    "time.minutes": "хвилин",
+    "translate.error_empty": "Спочатку введіть текст.",
+    "translate.error_network": "Не вдалося перекласти. Перевірте інтернет.",
+    "translate.error_no_result": "Переклад не знайдено",
+    "translate.success": "Переклад вставлено.",
+    "vocabulary.hint": "Підказка"
+  },
+  "ar": {
+    "answer.known": "معروفة",
+    "answer.unknown": "لا أعرفها",
+    "app.collection_picker": "اختيار قائمة التعلم",
+    "app.title": "مدرّب المفردات",
+    "button.speak": "🔊 استمع",
+    "button.speak_solution": "🔊 استمع إلى الإجابة",
+    "button.translate_from_foreign": "ترجمة من اللغة الأجنبية",
+    "button.translate_from_native": "ترجمة من اللغة الأم",
+    "collection.add": "إضافة قائمة جديدة",
+    "collection.choose": "اختر قائمة",
+    "collection.confirm_delete": "هل تريد حذف هذه القائمة نهائيًا مع جميع المفردات والتقدم المحفوظ فيها؟",
+    "collection.created": "تم إنشاء القائمة.",
+    "collection.delete": "حذف القائمة",
+    "collection.deleted": "تم حذف القائمة.",
+    "collection.error_empty_name": "لا يمكن أن يكون اسم القائمة فارغًا.",
+    "collection.error_keep_one": "يجب الاحتفاظ بقائمة واحدة على الأقل.",
+    "collection.error_name_exists": "توجد قائمة بهذا الاسم بالفعل.",
+    "collection.prompt_add": "أدخل اسم القائمة الجديدة:",
+    "collection.prompt_rename": "أدخل اسمًا جديدًا للقائمة:",
+    "collection.rename": "إعادة تسمية القائمة",
+    "collection.renamed": "تم تغيير اسم القائمة.",
+    "counter.due": "مستحقة",
+    "counter.not_tested": "لم يُختبر بعد",
+    "counter.practice": "{due} مستحق · {total} إجماليًا",
+    "counter.test": "{count} لم يُختبر بعد",
+    "counter.total": "إجمالًا",
+    "entry.error_required": "يرجى إدخال المفردة وترجمتها.",
+    "entry.export_excel": "تصدير Excel",
+    "entry.foreign_label": "العمود 1 – اللغة الأجنبية",
+    "entry.heading": "أضف مفردة",
+    "entry.hint_label": "العمود 3 – تلميح (اختياري)",
+    "entry.import_excel": "استيراد Excel",
+    "entry.import_help": "الاستيراد: اللغة الأجنبية، اللغة الأم، التلميح، معروف (عادي)، الطابع الزمني (عادي)، معروف (معكوس)، الطابع الزمني (معكوس). كما تُدعم ملفات التصدير القديمة ذات الأعمدة الإضافية.",
+    "entry.native_label": "العمود 2 – اللغة الأم",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "Apfel",
+    "entry.speak": "استمع",
+    "entry.success": "تمت إضافة المفردة.",
+    "import.error_empty_file": "الملف لا يحتوي على بيانات.",
+    "import.error_generic": "فشل الاستيراد: {details}",
+    "import.error_library": "لم يتم تحميل مكتبة Excel. تحقق من اتصال الإنترنت.",
+    "import.error_no_rows": "لم يتم العثور على صفوف مفردات. تحقق من العمودين 1 و2.",
+    "import.error_prefix": "فشل الاستيراد:",
+    "import.success": "تم استيراد {count} مفردة.",
+    "import.success_suffix": "مفردات مستوردة.",
+    "language.foreign": "اللغة الأجنبية",
+    "language.name.ar": "العربية",
+    "language.name.de": "الألمانية",
+    "language.name.el": "اليونانية",
+    "language.name.en": "الإنجليزية",
+    "language.name.es": "الإسبانية",
+    "language.name.fr": "الفرنسية",
+    "language.name.it": "الإيطالية",
+    "language.name.ja": "اليابانية",
+    "language.name.pl": "البولندية",
+    "language.name.ru": "الروسية",
+    "language.name.tr": "التركية",
+    "language.name.uk": "الأوكرانية",
+    "language.name.zh": "الصينية",
+    "language.native": "اللغة الأم",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "تم العثور على تكرارات. هل تريد حذفها؟",
+    "list.confirm_delete_word": "هل تريد حذف هذه المفردة؟",
+    "list.delete_duplicates": "حذف التكرارات",
+    "list.delete_word": "حذف المفردة",
+    "list.delete_word_aria": "حذف المفردة: {word}",
+    "list.duplicates_deleted": "تم حذف التكرارات.",
+    "list.duplicates_deleted_count": "تم حذف {count} من التكرارات.",
+    "list.heading": "قائمة المفردات",
+    "list.known_count": "معروف",
+    "list.no_duplicates": "لم يتم العثور على تكرارات.",
+    "list.sort_alphabetical": "أبجدي",
+    "list.sort_chronological": "زمني",
+    "list.sort_help": "انقر عنوان العمود للفرز.",
+    "list.timestamp": "الطابع الزمني",
+    "practice.correct_prefix": "صحيح — المراجعة التالية خلال ",
+    "practice.feedback.correct": "صحيح — المراجعة التالية بعد {duration}.",
+    "practice.feedback.retry": "ستتم مراجعتها مرة أخرى.",
+    "practice.no_hint": "لا يوجد تلميح",
+    "practice.none_due": "لا توجد مفردات مستحقة.",
+    "practice.none_due_initial": "لا توجد مفردات مستحقة بعد",
+    "practice.random_due": "ترتيب عشوائي لكل المفردات المستحقة",
+    "practice.retry": "ستتم مراجعته مرة أخرى.",
+    "practice.show_hint": "إظهار التلميح",
+    "practice.show_solution": "إظهار الإجابة",
+    "pwa.checking_update": "جارٍ التحقق من التحديث. يُرجى إعادة تحميل الصفحة بعد قليل.",
+    "pwa.install_button": "📲 تثبيت التطبيق",
+    "pwa.install_help": "افتح مدرّب المفردات في Chrome واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية» من القائمة.",
+    "pwa.update_available": "يتوفر إصدار جديد.",
+    "pwa.update_later": "لاحقًا",
+    "pwa.update_now": "حدّث الآن",
+    "pwa.updating": "جارٍ التحديث…",
+    "settings.confirm_delete_all_words": "هل تريد حقًا حذف جميع المفردات نهائيًا؟",
+    "settings.confirm_reset_progress": "هل تريد حقًا إعادة ضبط تقدم التعلم بالكامل؟",
+    "settings.delete_all_words": "حذف جميع المفردات",
+    "settings.interface_language": "لغة الواجهة",
+    "settings.local_storage_note": "يُحفظ التقدم محليًا في هذا المتصفح.",
+    "settings.progress_reset": "تمت إعادة ضبط التقدم.",
+    "settings.reset_progress": "إعادة ضبط كل التقدم",
+    "settings.reverse_direction": "عكس اتجاه التعلم (اللغة الأم ← الأجنبية)",
+    "settings.words_deleted": "تم حذف جميع المفردات.",
+    "speech.error_unsupported": "الإخراج الصوتي غير مدعوم.",
+    "storage.error_save": "تعذر الحفظ",
+    "tab.entry": "إضافة",
+    "tab.list": "القائمة",
+    "tab.practice": "تدرّب",
+    "tab.settings": "الإعدادات",
+    "tab.test": "اختبار",
+    "test.known_unchanged": "تم وضع علامة «معروفة»؛ التقدم لم يتغير.",
+    "test.none_initial": "لا توجد مفردات للاختبار.",
+    "test.none_remaining": "لم تعد هناك مفردات للاختبار.",
+    "test.random_order": "ترتيب عشوائي",
+    "test.restart": "إعادة الاختبار",
+    "test.restarted": "تمت إعادة الاختبار.",
+    "test.unknown_reset": "غير معروف: تمت إعادة ضبط التقدم وأصبحت المفردة مستحقة الآن.",
+    "time.day": "يوم",
+    "time.days": "أيام",
+    "time.hour": "ساعة",
+    "time.hours": "ساعات",
+    "time.minute": "دقيقة",
+    "time.minutes": "دقائق",
+    "translate.error_empty": "يرجى إدخال النص أولاً.",
+    "translate.error_network": "فشلت الترجمة. تحقق من الاتصال بالإنترنت.",
+    "translate.error_no_result": "لا توجد ترجمة",
+    "translate.success": "تم إدراج الترجمة.",
+    "vocabulary.hint": "تلميح"
+  },
+  "tr": {
+    "answer.known": "Bilindi",
+    "answer.unknown": "Bilinmedi",
+    "app.collection_picker": "Öğrenme listesini seç",
+    "app.title": "Kelime Öğrenme",
+    "button.speak": "🔊 Seslendir",
+    "button.speak_solution": "🔊 Yanıtı sesli oku",
+    "button.translate_from_foreign": "Yabancı dilden çevir",
+    "button.translate_from_native": "Ana dilden çevir",
+    "collection.add": "Yeni liste ekle",
+    "collection.choose": "Liste seç",
+    "collection.confirm_delete": "Bu listeyi ve içinde kayıtlı tüm kelimeleri ve öğrenme ilerlemesini kalıcı olarak silmek istiyor musunuz?",
+    "collection.created": "Liste oluşturuldu.",
+    "collection.delete": "Listeyi sil",
+    "collection.deleted": "Liste silindi.",
+    "collection.error_empty_name": "Liste adı boş olamaz.",
+    "collection.error_keep_one": "En az bir liste kalmalıdır.",
+    "collection.error_name_exists": "Bu ada sahip bir liste zaten var.",
+    "collection.prompt_add": "Yeni liste adını girin:",
+    "collection.prompt_rename": "Liste için yeni bir ad girin:",
+    "collection.rename": "Listeyi yeniden adlandır",
+    "collection.renamed": "Liste adı değiştirildi.",
+    "counter.due": "tekrar zamanı",
+    "counter.not_tested": "henüz test edilmedi",
+    "counter.practice": "{due} zamanı geldi · toplam {total}",
+    "counter.test": "{count} henüz test edilmedi",
+    "counter.total": "toplam",
+    "entry.error_required": "Lütfen kelimeyi ve çevirisini girin.",
+    "entry.export_excel": "Excel dışa aktar",
+    "entry.foreign_label": "1. sütun – Yabancı dil",
+    "entry.heading": "Kelime ekle",
+    "entry.hint_label": "3. sütun – İpucu (isteğe bağlı)",
+    "entry.import_excel": "Excel içe aktar",
+    "entry.import_help": "İçe aktarma: yabancı dil, ana dili, ipucu, bilindi (normal), zaman damgası (normal), bilindi (yansıtılmış), zaman damgası (yansıtılmış). Ek sütunları olan eski dışa aktarma dosyaları da desteklenir.",
+    "entry.native_label": "2. sütun – Ana dil",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "Apfel",
+    "entry.speak": "Seslendir",
+    "entry.success": "Kelime eklendi.",
+    "import.error_empty_file": "Dosyada veri yok.",
+    "import.error_generic": "İçe aktarma başarısız: {details}",
+    "import.error_library": "Excel kitaplığı yüklenmedi. İnternet bağlantınızı kontrol edin.",
+    "import.error_no_rows": "Kelime satırı bulunamadı. 1. ve 2. sütunları kontrol edin.",
+    "import.error_prefix": "İçe aktarma başarısız:",
+    "import.success": "{count} kelime içe aktarıldı.",
+    "import.success_suffix": "kelime içe aktarıldı.",
+    "language.foreign": "Yabancı dil",
+    "language.name.ar": "Arapça",
+    "language.name.de": "Almanca",
+    "language.name.el": "Yunanca",
+    "language.name.en": "İngilizce",
+    "language.name.es": "İspanyolca",
+    "language.name.fr": "Fransızca",
+    "language.name.it": "İtalyanca",
+    "language.name.ja": "Japonca",
+    "language.name.pl": "Lehçe",
+    "language.name.ru": "Rusça",
+    "language.name.tr": "Türkçe",
+    "language.name.uk": "Ukraynaca",
+    "language.name.zh": "Çince",
+    "language.native": "Ana dili",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "Yinelenenler bulundu. Silinsin mi?",
+    "list.confirm_delete_word": "Bu kelime gerçekten silinsin mi?",
+    "list.delete_duplicates": "Yinelenenleri sil",
+    "list.delete_word": "Kelimeyi sil",
+    "list.delete_word_aria": "Kelimeyi sil: {word}",
+    "list.duplicates_deleted": "Yinelenenler silindi.",
+    "list.duplicates_deleted_count": "{count} yinelenen kelime silindi.",
+    "list.heading": "Kelime listesi",
+    "list.known_count": "Bilindi",
+    "list.no_duplicates": "Yinelenen bulunamadı.",
+    "list.sort_alphabetical": "Alfabetik",
+    "list.sort_chronological": "Kronolojik",
+    "list.sort_help": "Sıralamak için sütun başlığına tıklayın.",
+    "list.timestamp": "Zaman damgası",
+    "practice.correct_prefix": "Doğru — sonraki tekrar ",
+    "practice.feedback.correct": "Doğru – sonraki tekrar {duration} sonra.",
+    "practice.feedback.retry": "Tekrar çalışılacak.",
+    "practice.no_hint": "ipucu yok",
+    "practice.none_due": "Tekrar edilecek kelime kalmadı.",
+    "practice.none_due_initial": "Henüz zamanı gelen kelime yok",
+    "practice.random_due": "Zamanı gelen tüm kelimelerin rastgele sırası",
+    "practice.retry": "Yeniden çalışılacak.",
+    "practice.show_hint": "İpucunu göster",
+    "practice.show_solution": "Yanıtı göster",
+    "pwa.checking_update": "Güncelleme kontrol ediliyor. Lütfen sayfayı kısa süre sonra yenileyin.",
+    "pwa.install_button": "📲 Uygulamayı yükle",
+    "pwa.install_help": "Kelime öğrenme uygulamasını Chrome’da açın ve menüden Uygulamayı yükle veya Ana ekrana ekle seçeneğini seçin.",
+    "pwa.update_available": "Yeni bir sürüm mevcut.",
+    "pwa.update_later": "Daha sonra",
+    "pwa.update_now": "Şimdi güncelle",
+    "pwa.updating": "Güncelleniyor…",
+    "settings.confirm_delete_all_words": "Tüm kelimeleri kalıcı olarak silmek istediğinizden emin misiniz?",
+    "settings.confirm_reset_progress": "Tüm öğrenme ilerlemesini sıfırlamak istediğinizden emin misiniz?",
+    "settings.delete_all_words": "Tüm kelimeleri sil",
+    "settings.interface_language": "Arayüz dili",
+    "settings.local_storage_note": "Öğrenme ilerlemesi bu tarayıcıda yerel olarak kaydedilir.",
+    "settings.progress_reset": "Öğrenme ilerlemesi sıfırlandı.",
+    "settings.reset_progress": "Tüm öğrenme ilerlemesini sıfırla",
+    "settings.reverse_direction": "Öğrenme yönünü tersine çevir (ana dil → yabancı dil)",
+    "settings.words_deleted": "Tüm kelimeler silindi.",
+    "speech.error_unsupported": "Sesli okuma desteklenmiyor.",
+    "storage.error_save": "Kaydedilemedi",
+    "tab.entry": "Ekle",
+    "tab.list": "Liste",
+    "tab.practice": "Çalış",
+    "tab.settings": "Ayarlar",
+    "tab.test": "Test",
+    "test.known_unchanged": "Biliniyor olarak işaretlendi; ilerleme değişmedi.",
+    "test.none_initial": "Test edilecek kelime yok.",
+    "test.none_remaining": "Test edilecek kelime kalmadı.",
+    "test.random_order": "Rastgele sıra",
+    "test.restart": "Testi yeniden başlat",
+    "test.restarted": "Test yeniden başlatıldı.",
+    "test.unknown_reset": "Bilinmedi: ilerleme sıfırlandı, şimdi tekrar zamanı geldi.",
+    "time.day": "gün",
+    "time.days": "gün",
+    "time.hour": "saat",
+    "time.hours": "saat",
+    "time.minute": "dakika",
+    "time.minutes": "dakika",
+    "translate.error_empty": "Önce metin girin.",
+    "translate.error_network": "Çeviri başarısız. İnternet bağlantısını kontrol edin.",
+    "translate.error_no_result": "Çeviri yok",
+    "translate.success": "Çeviri eklendi.",
+    "vocabulary.hint": "İpucu"
+  },
+  "pl": {
+    "answer.known": "Znane",
+    "answer.unknown": "Nieznane",
+    "app.collection_picker": "Wybierz listę do nauki",
+    "app.title": "Trener słownictwa",
+    "button.speak": "🔊 Odczytaj",
+    "button.speak_solution": "🔊 Odczytaj odpowiedź",
+    "button.translate_from_foreign": "Przetłumacz z języka obcego",
+    "button.translate_from_native": "Przetłumacz z języka ojczystego",
+    "collection.add": "Dodaj nową listę",
+    "collection.choose": "Wybierz listę",
+    "collection.confirm_delete": "Czy trwale usunąć tę listę oraz wszystkie zapisane w niej słówka i postępy?",
+    "collection.created": "Lista została utworzona.",
+    "collection.delete": "Usuń listę",
+    "collection.deleted": "Lista została usunięta.",
+    "collection.error_empty_name": "Nazwa listy nie może być pusta.",
+    "collection.error_keep_one": "Musi pozostać co najmniej jedna lista.",
+    "collection.error_name_exists": "Lista o tej nazwie już istnieje.",
+    "collection.prompt_add": "Wpisz nazwę nowej listy:",
+    "collection.prompt_rename": "Wpisz nową nazwę listy:",
+    "collection.rename": "Zmień nazwę listy",
+    "collection.renamed": "Zmieniono nazwę listy.",
+    "counter.due": "do powtórki",
+    "counter.not_tested": "jeszcze nieprzetestowane",
+    "counter.practice": "{due} do powtórki · łącznie {total}",
+    "counter.test": "{count} jeszcze nie przetestowano",
+    "counter.total": "łącznie",
+    "entry.error_required": "Wpisz słówko i tłumaczenie.",
+    "entry.export_excel": "Eksportuj do Excela",
+    "entry.foreign_label": "Kolumna 1 – Język obcy",
+    "entry.heading": "Dodaj słownictwo",
+    "entry.hint_label": "Kolumna 3 – Podpowiedź (opcjonalnie)",
+    "entry.import_excel": "Importuj z Excela",
+    "entry.import_help": "Import: język obcy, język ojczysty, podpowiedź, znane (normalnie), znacznik czasu (normalnie), znane (lustrzanie), znacznik czasu (lustrzanie). Obsługiwane są też starsze pliki z dodatkowymi kolumnami.",
+    "entry.native_label": "Kolumna 2 – Język ojczysty",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "Apfel",
+    "entry.speak": "Odczytaj",
+    "entry.success": "Dodano słówko.",
+    "import.error_empty_file": "Plik nie zawiera danych.",
+    "import.error_generic": "Import nie powiódł się: {details}",
+    "import.error_library": "Nie załadowano biblioteki Excel. Sprawdź połączenie z internetem.",
+    "import.error_no_rows": "Nie znaleziono wierszy ze słownictwem. Sprawdź kolumny 1 i 2.",
+    "import.error_prefix": "Import nie powiódł się:",
+    "import.success": "Zaimportowano {count} słów.",
+    "import.success_suffix": "słówek zaimportowano.",
+    "language.foreign": "Język obcy",
+    "language.name.ar": "Arabski",
+    "language.name.de": "Niemiecki",
+    "language.name.el": "Grecki",
+    "language.name.en": "Angielski",
+    "language.name.es": "Hiszpański",
+    "language.name.fr": "Francuski",
+    "language.name.it": "Włoski",
+    "language.name.ja": "Japoński",
+    "language.name.pl": "Polski",
+    "language.name.ru": "Rosyjski",
+    "language.name.tr": "Turecki",
+    "language.name.uk": "Ukraiński",
+    "language.name.zh": "Chiński",
+    "language.native": "Język ojczysty",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "Znaleziono duplikaty. Usunąć?",
+    "list.confirm_delete_word": "Czy na pewno usunąć to słówko?",
+    "list.delete_duplicates": "Usuń duplikaty",
+    "list.delete_word": "Usuń słówko",
+    "list.delete_word_aria": "Usuń słowo: {word}",
+    "list.duplicates_deleted": "Duplikaty usunięte.",
+    "list.duplicates_deleted_count": "Usunięto {count} duplikatów.",
+    "list.heading": "Lista słówek",
+    "list.known_count": "Znane",
+    "list.no_duplicates": "Nie znaleziono duplikatów.",
+    "list.sort_alphabetical": "Alfabetycznie",
+    "list.sort_chronological": "Chronologicznie",
+    "list.sort_help": "Kliknij nagłówek kolumny, aby sortować.",
+    "list.timestamp": "Znacznik czasu",
+    "practice.correct_prefix": "Dobrze — następna powtórka za ",
+    "practice.feedback.correct": "Dobrze – następna powtórka za {duration}.",
+    "practice.feedback.retry": "Będzie powtórzone.",
+    "practice.no_hint": "brak podpowiedzi",
+    "practice.none_due": "Brak słówek do powtórki.",
+    "practice.none_due_initial": "Brak słówek do powtórki",
+    "practice.random_due": "Losowa kolejność wszystkich słówek do powtórki",
+    "practice.retry": "Zostanie przećwiczone ponownie.",
+    "practice.show_hint": "Pokaż wskazówkę",
+    "practice.show_solution": "Pokaż odpowiedź",
+    "pwa.checking_update": "Sprawdzanie aktualizacji. Za chwilę odśwież stronę.",
+    "pwa.install_button": "📲 Zainstaluj aplikację",
+    "pwa.install_help": "Otwórz trener słownictwa w Chrome i wybierz w menu Zainstaluj aplikację lub Dodaj do ekranu głównego.",
+    "pwa.update_available": "Dostępna jest nowa wersja.",
+    "pwa.update_later": "Później",
+    "pwa.update_now": "Aktualizuj teraz",
+    "pwa.updating": "Aktualizowanie…",
+    "settings.confirm_delete_all_words": "Czy na pewno trwale usunąć wszystkie słówka?",
+    "settings.confirm_reset_progress": "Czy na pewno zresetować cały postęp nauki?",
+    "settings.delete_all_words": "Usuń wszystkie słówka",
+    "settings.interface_language": "Język interfejsu",
+    "settings.local_storage_note": "Postępy są zapisywane lokalnie w tej przeglądarce.",
+    "settings.progress_reset": "Postęp nauki został zresetowany.",
+    "settings.reset_progress": "Zresetuj wszystkie postępy",
+    "settings.reverse_direction": "Odwróć kierunek (ojczysty → obcy)",
+    "settings.words_deleted": "Wszystkie słówka zostały usunięte.",
+    "speech.error_unsupported": "Synteza mowy nie jest obsługiwana.",
+    "storage.error_save": "Nie udało się zapisać",
+    "tab.entry": "Dodaj",
+    "tab.list": "Lista",
+    "tab.practice": "Ćwiczenia",
+    "tab.settings": "Ustawienia",
+    "tab.test": "Test",
+    "test.known_unchanged": "Oznaczono jako znane; postęp bez zmian.",
+    "test.none_initial": "Brak słówek do testowania.",
+    "test.none_remaining": "Nie ma już słówek do testowania.",
+    "test.random_order": "Losowa kolejność",
+    "test.restart": "Rozpocznij test ponownie",
+    "test.restarted": "Test rozpoczęty ponownie.",
+    "test.unknown_reset": "Nieznane: postęp zresetowany, słówko znów do powtórki.",
+    "time.day": "dzień",
+    "time.days": "dni",
+    "time.hour": "godzina",
+    "time.hours": "godzin",
+    "time.minute": "minuta",
+    "time.minutes": "minut",
+    "translate.error_empty": "Najpierw wpisz tekst.",
+    "translate.error_network": "Tłumaczenie nie powiodło się. Sprawdź Internet.",
+    "translate.error_no_result": "Brak tłumaczenia",
+    "translate.success": "Wstawiono tłumaczenie.",
+    "vocabulary.hint": "Wskazówka"
+  },
+  "el": {
+    "answer.known": "Γνωστό",
+    "answer.unknown": "Δεν το γνώριζα",
+    "app.collection_picker": "Επιλογή λίστας εκμάθησης",
+    "app.title": "Εκπαιδευτής λεξιλογίου",
+    "button.speak": "🔊 Εκφώνηση",
+    "button.speak_solution": "🔊 Εκφώνηση απάντησης",
+    "button.translate_from_foreign": "Μετάφραση από ξένη γλώσσα",
+    "button.translate_from_native": "Μετάφραση από μητρική γλώσσα",
+    "collection.add": "Προσθήκη νέας λίστας",
+    "collection.choose": "Επιλογή λίστας",
+    "collection.confirm_delete": "Να διαγραφεί οριστικά αυτή η λίστα και όλο το λεξιλόγιο και η πρόοδος που είναι αποθηκευμένα σε αυτή;",
+    "collection.created": "Η λίστα δημιουργήθηκε.",
+    "collection.delete": "Διαγραφή λίστας",
+    "collection.deleted": "Η λίστα διαγράφηκε.",
+    "collection.error_empty_name": "Το όνομα της λίστας δεν μπορεί να είναι κενό.",
+    "collection.error_keep_one": "Πρέπει να παραμείνει τουλάχιστον μία λίστα.",
+    "collection.error_name_exists": "Υπάρχει ήδη λίστα με αυτό το όνομα.",
+    "collection.prompt_add": "Εισαγάγετε το όνομα της νέας λίστας:",
+    "collection.prompt_rename": "Εισαγάγετε νέο όνομα για τη λίστα:",
+    "collection.rename": "Μετονομασία λίστας",
+    "collection.renamed": "Το όνομα της λίστας άλλαξε.",
+    "counter.due": "σε επανάληψη",
+    "counter.not_tested": "δεν έχουν εξεταστεί",
+    "counter.practice": "{due} για επανάληψη · σύνολο {total}",
+    "counter.test": "{count} δεν έχουν δοκιμαστεί ακόμη",
+    "counter.total": "συνολικά",
+    "entry.error_required": "Συμπληρώστε τη λέξη και τη μετάφραση.",
+    "entry.export_excel": "Εξαγωγή Excel",
+    "entry.foreign_label": "Στήλη 1 – Ξένη γλώσσα",
+    "entry.heading": "Καταχώριση λέξης",
+    "entry.hint_label": "Στήλη 3 – Βοήθημα προφοράς (προαιρετικό)",
+    "entry.import_excel": "Εισαγωγή Excel",
+    "entry.import_help": "Εισαγωγή: ξένη γλώσσα, μητρική γλώσσα, υπόδειξη, Γνωστό (κανονικό), χρονική σήμανση (κανονική), Γνωστό (αντίστροφο), χρονική σήμανση (αντίστροφη). Υποστηρίζονται επίσης παλαιότερα αρχεία εξαγωγής με επιπλέον στήλες.",
+    "entry.native_label": "Στήλη 2 – Μητρική γλώσσα",
+    "entry.placeholder.foreign": "apple",
+    "entry.placeholder.native": "Apfel",
+    "entry.speak": "Εκφώνηση",
+    "entry.success": "Η λέξη καταχωρίστηκε.",
+    "import.error_empty_file": "Το αρχείο δεν περιέχει δεδομένα.",
+    "import.error_generic": "Η εισαγωγή απέτυχε: {details}",
+    "import.error_library": "Δεν φορτώθηκε η βιβλιοθήκη Excel. Ελέγξτε τη σύνδεση στο διαδίκτυο.",
+    "import.error_no_rows": "Δεν εντοπίστηκαν γραμμές λεξιλογίου. Ελέγξτε τις στήλες 1 και 2.",
+    "import.error_prefix": "Η εισαγωγή απέτυχε:",
+    "import.success": "Εισήχθησαν {count} λέξεις.",
+    "import.success_suffix": "λέξεις εισήχθησαν.",
+    "language.foreign": "Ξένη γλώσσα",
+    "language.name.ar": "Αραβικά",
+    "language.name.de": "Γερμανικά",
+    "language.name.el": "Ελληνικά",
+    "language.name.en": "Αγγλικά",
+    "language.name.es": "Ισπανικά",
+    "language.name.fr": "Γαλλικά",
+    "language.name.it": "Ιταλικά",
+    "language.name.ja": "Ιαπωνικά",
+    "language.name.pl": "Πολωνικά",
+    "language.name.ru": "Ρωσικά",
+    "language.name.tr": "Τουρκικά",
+    "language.name.uk": "Ουκρανικά",
+    "language.name.zh": "Κινέζικα",
+    "language.native": "Μητρική γλώσσα",
+    "language.option.ar": "🇸🇦 العربية",
+    "language.option.de": "🇩🇪 Deutsch",
+    "language.option.el": "🇬🇷 Ελληνικά",
+    "language.option.en": "🇬🇧 English",
+    "language.option.es": "🇪🇸 Español",
+    "language.option.fr": "🇫🇷 Français",
+    "language.option.it": "🇮🇹 Italiano",
+    "language.option.ja": "🇯🇵 日本語",
+    "language.option.pl": "🇵🇱 Polski",
+    "language.option.ru": "🇷🇺 Русский",
+    "language.option.tr": "🇹🇷 Türkçe",
+    "language.option.uk": "🇺🇦 Українська",
+    "language.option.zh": "🇨🇳 中文",
+    "list.confirm_delete_duplicates": "Βρέθηκαν διπλότυπα. Θέλετε πράγματι να διαγραφούν?",
+    "list.confirm_delete_word": "Να διαγραφεί αυτή η λέξη;",
+    "list.delete_duplicates": "Διαγραφή διπλοτύπων",
+    "list.delete_word": "Διαγραφή λέξης",
+    "list.delete_word_aria": "Διαγραφή λέξης: {word}",
+    "list.duplicates_deleted": "Τα διπλότυπα διαγράφηκαν.",
+    "list.duplicates_deleted_count": "Διαγράφηκαν {count} διπλότυπα.",
+    "list.heading": "Λίστα λεξιλογίου",
+    "list.known_count": "Γνωστό",
+    "list.no_duplicates": "Δεν βρέθηκαν διπλότυπα.",
+    "list.sort_alphabetical": "Αλφαβητικά",
+    "list.sort_chronological": "Χρονολογικά",
+    "list.sort_help": "Κάντε κλικ σε μια επικεφαλίδα για ταξινόμηση.",
+    "list.timestamp": "Χρονική σήμανση",
+    "practice.correct_prefix": "Σωστά — επόμενη επανάληψη σε ",
+    "practice.feedback.correct": "Σωστά – επόμενη επανάληψη σε {duration}.",
+    "practice.feedback.retry": "Θα επαναληφθεί.",
+    "practice.no_hint": "χωρίς υπόδειξη",
+    "practice.none_due": "Δεν απομένουν λέξεις για επανάληψη.",
+    "practice.none_due_initial": "Δεν υπάρχουν ακόμη λέξεις για επανάληψη",
+    "practice.random_due": "Τυχαία σειρά όλων των λέξεων που είναι για επανάληψη",
+    "practice.retry": "Θα επαναληφθεί.",
+    "practice.show_hint": "Εμφάνιση υπόδειξης",
+    "practice.show_solution": "Εμφάνιση απάντησης",
+    "pwa.checking_update": "Έλεγχος για ενημέρωση. Παρακαλώ ανανεώστε τη σελίδα σε λίγο.",
+    "pwa.install_button": "📲 Εγκατάσταση εφαρμογής",
+    "pwa.install_help": "Ανοίξτε τον εκπαιδευτή λεξιλογίου στο Chrome και επιλέξτε από το μενού Εγκατάσταση εφαρμογής ή Προσθήκη στην αρχική οθόνη.",
+    "pwa.update_available": "Υπάρχει νέα έκδοση.",
+    "pwa.update_later": "Αργότερα",
+    "pwa.update_now": "Ενημέρωση τώρα",
+    "pwa.updating": "Γίνεται ενημέρωση…",
+    "settings.confirm_delete_all_words": "Να διαγραφούν οριστικά όλες οι λέξεις;",
+    "settings.confirm_reset_progress": "Να γίνει επαναφορά όλης της προόδου εκμάθησης;",
+    "settings.delete_all_words": "Διαγραφή όλων των λέξεων",
+    "settings.interface_language": "Γλώσσα διεπαφής",
+    "settings.local_storage_note": "Η πρόοδος εκμάθησης αποθηκεύεται τοπικά σε αυτό το πρόγραμμα περιήγησης.",
+    "settings.progress_reset": "Η πρόοδος επαναφέρθηκε.",
+    "settings.reset_progress": "Επαναφορά όλης της προόδου",
+    "settings.reverse_direction": "Αντιστροφή κατεύθυνσης (μητρική → ξένη γλώσσα)",
+    "settings.words_deleted": "Όλες οι λέξεις διαγράφηκαν.",
+    "speech.error_unsupported": "Δεν υποστηρίζεται η εκφώνηση.",
+    "storage.error_save": "Η αποθήκευση απέτυχε",
+    "tab.entry": "Καταχώριση",
+    "tab.list": "Λίστα",
+    "tab.practice": "Εξάσκηση",
+    "tab.settings": "Ρυθμίσεις",
+    "tab.test": "Τεστ",
+    "test.known_unchanged": "Σημειώθηκε ως γνωστό· η πρόοδος δεν άλλαξε.",
+    "test.none_initial": "Δεν υπάρχουν λέξεις για δοκιμή.",
+    "test.none_remaining": "Δεν απομένουν λέξεις για δοκιμή.",
+    "test.random_order": "Τυχαία σειρά",
+    "test.restart": "Επανεκκίνηση τεστ",
+    "test.restarted": "Το τεστ ξεκίνησε ξανά.",
+    "test.unknown_reset": "Άγνωστο: έγινε επαναφορά προόδου και η λέξη είναι ξανά για επανάληψη.",
+    "time.day": "ημέρα",
+    "time.days": "ημέρες",
+    "time.hour": "ώρα",
+    "time.hours": "ώρες",
+    "time.minute": "λεπτό",
+    "time.minutes": "λεπτά",
+    "translate.error_empty": "Παρακαλώ εισαγάγετε πρώτα κείμενο.",
+    "translate.error_network": "Η μετάφραση απέτυχε. Ελέγξτε τη σύνδεση στο διαδίκτυο.",
+    "translate.error_no_result": "Δεν υπάρχει μετάφραση",
+    "translate.success": "Η μετάφραση εισήχθη.",
+    "vocabulary.hint": "Υπόδειξη"
+  }
+};
+
+/*
+ * Übergangstabelle für bestehende HTML-Textknoten und ältere UI-Aufrufe.
+ * Neue Funktionen sollen diese Zuordnung nicht mehr benutzen.
+ */
+const UI_TEXT_IDS = {
+  "Aktualisiere…": "pwa.updating",
+  "Alle Vokabeln gelöscht.": "settings.words_deleted",
+  "Alle Vokabeln löschen": "settings.delete_all_words",
+  "Alphabetisch": "list.sort_alphabetical",
+  "Als gewusst markiert; Lernstand unverändert.": "test.known_unchanged",
+  "Apfel": "entry.placeholder.native",
+  "Bitte Vokabel und Übersetzung ausfüllen.": "entry.error_required",
+  "Bitte zuerst Text eingeben.": "translate.error_empty",
+  "Bitte öffne den Vokabeltrainer in Chrome und wähle im Menü App installieren oder Zum Startbildschirm hinzufügen.": "pwa.install_help",
+  "Chronologisch": "list.sort_chronological",
+  "Der Lernfortschritt wird lokal in diesem Browser gespeichert.": "settings.local_storage_note",
+  "Der Listenname darf nicht leer sein.": "collection.error_empty_name",
+  "Die Datei enthält keine Daten.": "import.error_empty_file",
+  "Diese Liste und alle darin gespeicherten Vokabeln und Lernstände endgültig löschen?": "collection.confirm_delete",
+  "Diese Vokabel wirklich löschen?": "list.confirm_delete_word",
+  "Duplikate gefunden. Wirklich löschen?": "list.confirm_delete_duplicates",
+  "Duplikate gelöscht.": "list.duplicates_deleted",
+  "Duplikate löschen": "list.delete_duplicates",
+  "Eine Liste mit diesem Namen existiert bereits.": "collection.error_name_exists",
+  "Eine neue Version ist verfügbar.": "pwa.update_available",
+  "Einstellungen": "tab.settings",
+  "Eintragen": "tab.entry",
+  "Excel exportieren": "entry.export_excel",
+  "Excel importieren": "entry.import_excel",
+  "Excel-Bibliothek nicht geladen. Bitte Internetverbindung prüfen.": "import.error_library",
+  "Fremdsprache": "language.foreign",
+  "Gesamten Lernfortschritt zurücksetzen": "settings.reset_progress",
+  "Gewusst": "answer.known",
+  "Hinweis": "vocabulary.hint",
+  "Hinweis anzeigen": "practice.show_hint",
+  "Import fehlgeschlagen:": "import.error_prefix",
+  "Import: Fremdsprache, Muttersprache, Hinweis, Gewusst (normal), Zeitstempel (normal), Gewusst (gespiegelt), Zeitstempel (gespiegelt). Auch ältere Exportdateien mit Zusatzspalten werden unterstützt.": "entry.import_help",
+  "Index": "list.known_count",
+  "Jetzt aktualisieren": "pwa.update_now",
+  "Keine Duplikate gefunden.": "list.no_duplicates",
+  "Keine Vokabeln zum Testen übrig.": "test.none_remaining",
+  "Keine Vokabeln zum Testen.": "test.none_initial",
+  "Keine Vokabelzeilen erkannt. Bitte Spalten 1 und 2 prüfen.": "import.error_no_rows",
+  "Keine fälligen Vokabeln übrig.": "practice.none_due",
+  "Keine Übersetzung": "translate.error_no_result",
+  "Lernfortschritt zurückgesetzt.": "settings.progress_reset",
+  "Lernliste auswählen": "app.collection_picker",
+  "Lernrichtung spiegeln (Muttersprache → Fremdsprache)": "settings.reverse_direction",
+  "Liste": "tab.list",
+  "Liste erstellt.": "collection.created",
+  "Liste gelöscht.": "collection.deleted",
+  "Liste löschen": "collection.delete",
+  "Liste umbenennen": "collection.rename",
+  "Liste wählen": "collection.choose",
+  "Listenname geändert.": "collection.renamed",
+  "Lösung anzeigen": "practice.show_solution",
+  "Mindestens eine Liste muss erhalten bleiben.": "collection.error_keep_one",
+  "Minute": "time.minute",
+  "Minuten": "time.minutes",
+  "Muttersprache": "language.native",
+  "Name der neuen Liste eingeben:": "collection.prompt_add",
+  "Neue Liste hinzufügen": "collection.add",
+  "Neuen Namen für die Liste eingeben:": "collection.prompt_rename",
+  "Nicht gewusst": "answer.unknown",
+  "Noch keine fälligen Vokabeln": "practice.none_due_initial",
+  "Oberflächensprache": "settings.interface_language",
+  "Richtig – nächste Wiederholung in ": "practice.correct_prefix",
+  "Spalte 1 – Fremdsprache": "entry.foreign_label",
+  "Spalte 2 – Muttersprache": "entry.native_label",
+  "Spalte 3 – Hinweis (optional)": "entry.hint_label",
+  "Speichern fehlgeschlagen": "storage.error_save",
+  "Sprachausgabe wird nicht unterstützt.": "speech.error_unsupported",
+  "Später": "pwa.update_later",
+  "Stunde": "time.hour",
+  "Stunden": "time.hours",
+  "Tag": "time.day",
+  "Tage": "time.days",
+  "Test neu gestartet.": "test.restarted",
+  "Test neu starten": "test.restart",
+  "Testen": "tab.test",
+  "Update wird geprüft. Bitte Seite kurz neu laden.": "pwa.checking_update",
+  "Vokabel eingetragen.": "entry.success",
+  "Vokabel eintragen": "entry.heading",
+  "Vokabel löschen": "list.delete_word",
+  "Vokabelliste": "list.heading",
+  "Vokabeln importiert.": "import.success_suffix",
+  "Vokabeltrainer": "app.title",
+  "Vorlesen": "entry.speak",
+  "Wird erneut geübt.": "practice.retry",
+  "Wirklich alle Vokabeln unwiderruflich löschen?": "settings.confirm_delete_all_words",
+  "Wirklich den gesamten Lernfortschritt zurücksetzen?": "settings.confirm_reset_progress",
+  "Zeitstempel": "list.timestamp",
+  "Zufällige Reihenfolge": "test.random_order",
+  "Zufällige Reihenfolge aller fälligen Vokabeln": "practice.random_due",
+  "Zum Sortieren auf eine Spaltenüberschrift klicken.": "list.sort_help",
+  "apple": "entry.placeholder.foreign",
+  "fällig": "counter.due",
+  "insgesamt": "counter.total",
+  "kein Hinweis": "practice.no_hint",
+  "noch nicht getestet": "counter.not_tested",
+  "Üben": "tab.practice",
+  "Übersetzen aus Fremdsprache": "button.translate_from_foreign",
+  "Übersetzen aus Muttersprache": "button.translate_from_native",
+  "Übersetzung eingefügt.": "translate.success",
+  "Übersetzung fehlgeschlagen. Internetverbindung prüfen.": "translate.error_network",
+  "📲 App installieren": "pwa.install_button",
+  "🔊 Lösung vorlesen": "button.speak_solution",
+  "🔊 Vorlesen": "button.speak"
+};
+
+window.UI_TEXTS = UI_TEXTS;
+window.UI_TEXT_IDS = UI_TEXT_IDS;
+window.vocabT = function(id, values={}) {
+  const saved = JSON.parse(localStorage.getItem('vokabeltrainer_settings_v3') || '{}');
+  const lang = saved.uiLanguage || 'de';
+  const text = UI_TEXTS[lang]?.[id] ?? UI_TEXTS.de[id] ?? `[${id}]`;
+  return String(text).replace(/\{([a-zA-Z0-9_]+)\}/g, (match, name) =>
+    Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : match
+  );
+};
+window.UI_TEXT_REFERENCED_IDS = ["answer.known", "answer.unknown", "app.collection_picker", "app.title", "button.speak", "button.speak_solution", "button.translate_from_foreign", "button.translate_from_native", "collection.add", "collection.choose", "collection.confirm_delete", "collection.created", "collection.delete", "collection.deleted", "collection.error_empty_name", "collection.error_keep_one", "collection.error_name_exists", "collection.prompt_add", "collection.prompt_rename", "collection.rename", "collection.renamed", "counter.due", "counter.not_tested", "counter.practice", "counter.test", "counter.total", "entry.error_required", "entry.export_excel", "entry.foreign_label", "entry.heading", "entry.hint_label", "entry.import_excel", "entry.import_help", "entry.native_label", "entry.placeholder.foreign", "entry.placeholder.native", "entry.speak", "entry.success", "import.error_empty_file", "import.error_generic", "import.error_library", "import.error_no_rows", "import.error_prefix", "import.success", "import.success_suffix", "language.foreign", "language.name.ar", "language.name.de", "language.name.el", "language.name.en", "language.name.es", "language.name.fr", "language.name.it", "language.name.ja", "language.name.pl", "language.name.ru", "language.name.tr", "language.name.uk", "language.name.zh", "language.native", "language.option.ar", "language.option.de", "language.option.el", "language.option.en", "language.option.es", "language.option.fr", "language.option.it", "language.option.ja", "language.option.pl", "language.option.ru", "language.option.tr", "language.option.uk", "language.option.zh", "list.confirm_delete_duplicates", "list.confirm_delete_word", "list.delete_duplicates", "list.delete_word", "list.delete_word_aria", "list.duplicates_deleted", "list.duplicates_deleted_count", "list.heading", "list.known_count", "list.no_duplicates", "list.sort_alphabetical", "list.sort_chronological", "list.sort_help", "list.timestamp", "practice.correct_prefix", "practice.feedback.correct", "practice.feedback.retry", "practice.no_hint", "practice.none_due", "practice.none_due_initial", "practice.random_due", "practice.retry", "practice.show_hint", "practice.show_solution", "pwa.checking_update", "pwa.install_button", "pwa.install_help", "pwa.update_available", "pwa.update_later", "pwa.update_now", "pwa.updating", "settings.confirm_delete_all_words", "settings.confirm_reset_progress", "settings.delete_all_words", "settings.interface_language", "settings.local_storage_note", "settings.progress_reset", "settings.reset_progress", "settings.reverse_direction", "settings.words_deleted", "speech.error_unsupported", "storage.error_save", "tab.entry", "tab.list", "tab.practice", "tab.settings", "tab.test", "test.known_unchanged", "test.none_initial", "test.none_remaining", "test.random_order", "test.restart", "test.restarted", "test.unknown_reset", "time.day", "time.days", "time.hour", "time.hours", "time.minute", "time.minutes", "translate.error_empty", "translate.error_network", "translate.error_no_result", "translate.success", "vocabulary.hint"];
+window.vocabUiAudit = function() {
+  const ids = Object.keys(UI_TEXTS.de);
+  const missingTranslations = {};
+  for (const language of UI_TEXTS.supportedLanguages || Object.keys(UI_TEXTS)) {
+    if (language === 'de' || !UI_TEXTS[language]) continue;
+    missingTranslations[language] = ids.filter(id => !String(UI_TEXTS[language][id] || '').trim());
+  }
+  const references = new Set([...(window.UI_TEXT_REFERENCED_IDS || []), ...Object.values(UI_TEXT_IDS)]);
+  const unmappedStaticText = [];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    const parent = node.parentElement;
+    if (!parent || ['SCRIPT','STYLE','OPTION','TEXTAREA','INPUT'].includes(parent.tagName)) continue;
+    if (parent.closest('[data-no-translate], input, textarea, .word, .revealed, #wordRows, #practiceWord, #testWord, #collectionToggle, .collection-add, #practiceCount, #testCount, #practiceStatus, #testStatus, #entryStatus, #listStatus, #settingsStatus, #list thead th[data-sort]')) continue;
+    const source = String(node.nodeValue || '').trim();
+    if (!source || ['✎','🗑','⇄'].includes(source)) continue;
+    if (!UI_TEXT_IDS[source] && !parent.getAttribute('data-i18n')) unmappedStaticText.push(source);
+  }
+  const unmappedStaticAttributes = [];
+  document.querySelectorAll('body [title], body [aria-label], body [placeholder], body [alt]').forEach(element => {
+    if (element.closest('[data-no-translate], .delete-one, .collection-item, #collectionToggle')) return;
+    for (const attribute of ['title','aria-label','placeholder','alt']) {
+      if (!element.hasAttribute(attribute)) continue;
+      const value = element.getAttribute(attribute);
+      if (value && !UI_TEXT_IDS[value] && !element.getAttribute('data-i18n-' + attribute)) unmappedStaticAttributes.push(attribute + ': ' + value);
+    }
+  });
+  return {
+    totalGermanKeys: ids.length,
+    referencedStableKeys: references.size,
+    unmappedStaticText: [...new Set(unmappedStaticText)],
+    unmappedStaticAttributes: [...new Set(unmappedStaticAttributes)],
+    missingTranslations,
+    missingRuntimeKeys: window.UI_MISSING_RUNTIME_KEYS || []
+  };
+};
+window.exportUiTextTemplate = function(language='en') {
+  return JSON.stringify(Object.fromEntries(Object.entries(UI_TEXTS.de).map(([id, german]) =>
+    [id, {de:german, [language]:UI_TEXTS[language]?.[id] || ''}]
+  )), null, 2);
+};
+window.dispatchEvent(new Event('vocab-ui-texts-ready'));
+
 </script>
 
 </body>
